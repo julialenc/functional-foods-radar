@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Data files - fetched by ingest.py, not committed
+data/raw/*.json
+data/sample/*.csv
+
+# Keep the placeholder folders
+!data/raw/.gitkeep
+!data/sample/.gitkeep

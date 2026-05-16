@@ -75,10 +75,18 @@ def fetch_category(category: str, n: int = PRODUCTS_PER_CATEGORY) -> list[dict]:
     }
 
     headers = {"User-Agent": USER_AGENT}
+    import time
 
     print(f"  Fetching '{category}' ({n} products)...")
-    response = requests.get(BASE_URL, params=params, headers=headers, timeout=30)
-    response.raise_for_status()
+    for attempt in range(3):
+        response = requests.get(BASE_URL, params=params, headers=headers, timeout=30)
+        if response.status_code == 503:
+            wait = 10 * (attempt + 1)
+            print(f"  503 received, retrying in {wait}s (attempt {attempt + 1}/3)...")
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        break
 
     data = response.json()
     products = data.get("products", [])
@@ -162,7 +170,10 @@ def main():
 
     all_rows = []
 
-    for category in CATEGORIES:
+    for i, category in enumerate(CATEGORIES):
+        if i > 0:
+            print("  Pausing 5s between categories...")
+            import time; time.sleep(5)
         products = fetch_category(category)
         save_raw(products, category, timestamp)
 
