@@ -330,3 +330,83 @@ This file is updated continuously during development.
 
 Last updated: 18 May 2026
 
+
+
+\---
+
+
+
+\### OBS-007 — Reality check findings
+
+\*\*Date:\*\* 18 May 2026
+
+\*\*Script:\*\* notebooks/reality\_checks.py
+
+
+
+\*\*Check 1 — Calorie plausibility (4 flags):\*\*
+
+\- CRISTALINE water (0 kcal) in snacks: OFF contributor misclassification,
+
+&#x20; not a data error. Calories correct for water.
+
+\- Cranberry/almond cookie (48 kcal/100g): genuine data error. Carrefour
+
+&#x20; confirms 471 kcal/100g. Likely per-serving entry mistake.
+
+\- Nescafe Classic (267 kcal/100g): plausible for instant powder. Flag
+
+&#x20; for manual review, do not drop.
+
+\- Caobel drinking chocolate (366 kcal/100g): correct for chocolate
+
+&#x20; powder. Beverage kcal range too narrow for hot drink powders.
+
+
+
+\*\*Check 2 — Sugar vs carbs:\*\* PASS (0 flags)
+
+\*\*Check 3 — Saturated vs total fat:\*\* PASS (0 flags)
+
+
+
+\*\*Check 4 — Pack size sanity (2 flags after comma fix):\*\*
+
+\- Coke 0kg: no usable quantity data, candidate for removal in production
+
+\- Al Ain 8L: plausible, sold in 5L gallons in UAE market
+
+
+
+\*\*Parser fix applied:\*\* European decimal commas normalised in clean.py
+
+Step 3. Reduced Check 4 flags from 4 to 2.
+
+
+
+\*\*Unparseable quantity values (13 rows, not flagged):\*\*
+
+Root cause: spelled-out units in multiple languages:
+
+\- English: "gram", "gr", "grammes", "litres"
+
+\- Arabic: "غ" (gram symbol)
+
+\- Bare numbers with no unit: "250", "230", "500"
+
+Not a data error — parser limitation. Acceptable for v1.
+
+
+
+\*\*Overall data quality assessment:\*\*
+
+Checks 2 and 3 passing cleanly (0 flags each) is a strong signal —
+
+the core nutritional relationships are internally consistent across
+
+286 products. Main data quality issues are category misclassification
+
+and quantity field formatting, neither of which affects the NLP or
+
+nutritional analysis.
+
