@@ -88,7 +88,7 @@ def fetch_category(category: str, n: int = PRODUCTS_PER_CATEGORY) -> list[dict]:
     for attempt in range(3):
         response = requests.get(BASE_URL, params=params, headers=headers, timeout=30)
         if response.status_code == 503:
-            wait = 10 * (attempt + 1)
+            wait = 20 * (attempt + 1)
             print(f"  503 received, retrying in {wait}s (attempt {attempt + 1}/3)...")
             time.sleep(wait)
             continue
@@ -152,6 +152,10 @@ def flatten_product(product: dict, category: str) -> dict:
         # timestamps
         "created_t":            product.get("created_t", None),
         "last_modified_t":      product.get("last_modified_t", None),
+
+        # additives (pre-parsed E-number list from OFF)
+        # stored as pipe-separated string e.g. "en:e407|en:e950|en:e952"
+        "additives_tags":       "|".join(product.get("additives_tags", [])),
     }
 
 
@@ -187,8 +191,9 @@ def main():
 
     for i, category in enumerate(CATEGORIES):
         if i > 0:
-            print("  Pausing 5s between categories...")
-            import time; time.sleep(5)
+            wait = 15 if category == "beverages" else 5
+            print(f"  Pausing {wait}s before '{category}'...")
+            import time; time.sleep(wait)
         products = fetch_category(category)
         save_raw(products, category, timestamp)
 
