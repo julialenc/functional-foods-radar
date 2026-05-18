@@ -410,3 +410,59 @@ and quantity field formatting, neither of which affects the NLP or
 
 nutritional analysis.
 
+
+
+\---
+
+\---
+
+
+
+\### OBS-008 — NLP scope restricted to EN and FR for v1
+
+\*\*Date:\*\* 18 May 2026
+
+\*\*Decision:\*\* nlp\_eligible column added to clean.py (Step 12)
+
+
+
+Rows eligible for Option A NLP analysis: EN + FR + BOTH only.
+
+OTHER and UNKNOWN rows retained in dataset for nutritional analysis
+
+but excluded from ingredient flagging.
+
+
+
+Coverage: 239 of 286 rows (84%)
+
+Breakdown: FR=197, EN=32, BOTH=10
+
+
+
+Excluded (16%): OTHER=40, UNKNOWN=7
+
+OTHER contains: Bulgarian, Arabic, German, Spanish, and other languages.
+
+These rows have valid nutritional data and are included in:
+
+\- Completeness scoring
+
+\- v2 K-Means clustering
+
+\- Power BI nutritional visuals
+
+
+
+They are excluded only from Option A ingredient text flagging, where
+
+an EN/FR dictionary would produce silent false negatives.
+
+
+
+\*\*How to use in analyze.py:\*\*
+
+&#x20;   eligible = df\[df\["nlp\_eligible"] == True]
+
+&#x20;   # run NLP only on eligible rows
+
