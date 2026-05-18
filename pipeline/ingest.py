@@ -93,9 +93,17 @@ def fetch_category(category: str, n: int = PRODUCTS_PER_CATEGORY) -> list[dict]:
             time.sleep(wait)
             continue
         response.raise_for_status()
+        if not response.text.strip():
+            print(f"  Empty response received, skipping category '{category}'")
+            return []
         break
 
-    data = response.json()
+    try:
+        data = response.json()
+    except Exception as e:
+        print(f"  Failed to parse JSON for '{category}': {e}")
+        return []
+
     products = data.get("products", [])
     print(f"  → {len(products)} products received")
     return products
