@@ -28,7 +28,7 @@ CATEGORIES = [
     "cereals",
 ]
 
-PRODUCTS_PER_CATEGORY = 50  # increase later for production runs
+PRODUCTS_PER_CATEGORY = 150  # increase later for production runs
 
 BASE_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 
