@@ -48,6 +48,13 @@ FIELDS = ",".join([
     "packaging",
     "created_t",
     "last_modified_t",
+    "additives_tags",       # E-number list pre-parsed by OFF — used in analyze.py Option A
+    # "image_url",          # v3: front-of-pack image for LLM claim extraction
+                            # Excluded from v1 — tens of thousands of products,
+                            # images not needed until claim-vs-reality gap analysis.
+                            # Uncomment when ready for v3 vision pipeline.
+                            # Use open source vision model (LLaVA/InternVL2), not
+                            # Azure/OpenAI — cost prohibitive at this scale.
 ])
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
