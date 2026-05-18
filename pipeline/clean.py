@@ -301,13 +301,25 @@ def clean(input_path):
     avg = df["completeness_score"].mean()
     print(f"  Step 11 - Completeness score added (avg: {avg:.1f}/100)")
  
-    # Step 12: Add nullable cluster_label (v2 stub)
+    # Step 12: Flag rows eligible for NLP analysis (EN and FR only)
+    # OTHER/UNKNOWN rows retained for nutritional analysis but excluded
+    # from Option A ingredient flagging.
+    # BOTH = bilingual packaging, treated as eligible.
+    # Coverage: ~84% of rows based on 18 May 2026 sample.
+    # See docs/DATA_OBSERVATIONS.md OBS-001 and OBS-008.
+    df["nlp_eligible"] = df["ingredients_lang"].isin(["EN", "FR", "BOTH"])
+    eligible = df["nlp_eligible"].sum()
+    print(f"  Step 12 - NLP eligible: {eligible} of {len(df)} rows "
+          f"({eligible/len(df)*100:.0f}%)")
+
+    # Step 13: Add nullable cluster_label (v2 stub)
     # Intentionally empty in v1. K-Means (Option B) will populate this.
     # Column exists now so SQLite schema and Power BI model don't break.
     # See docs/ADR.md.
     if "cluster_label" not in df.columns:
         df["cluster_label"] = None
-    print(f"  Step 12 - cluster_label column added (null, v2 stub)")
+    print(f"  Step 13 - cluster_label column added (null, v2 stub)")
+
  
     return df
  
