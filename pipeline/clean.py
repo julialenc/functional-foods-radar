@@ -241,7 +241,15 @@ def clean(input_path):
                 "off_categories", "packaging"]:
         if col in df.columns:
             df[col] = df[col].apply(clean_text)
-    print(f"  Step 3  - HTML entities and whitespace cleaned")
+    print(f"  Step 3  - HTML entities, whitespace, and quantity commas cleaned")
+
+    # Normalise European decimal commas in quantity field
+    # e.g. "1,15 L" -> "1.15 L" (prevents multipack parser misreading)
+    if "quantity" in df.columns:
+        df["quantity"] = df["quantity"].str.replace(
+            r"(\d),(\d)", r"\1.\2", regex=True
+        )
+
  
     # Step 4: Normalise brands
     df["brands"] = (
