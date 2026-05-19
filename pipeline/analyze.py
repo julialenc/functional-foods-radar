@@ -240,6 +240,13 @@ FUNCTIONAL_CLAIM_MARKERS = [
     ("extrait de chicorée", "prebiotic_claim"),  # FR — extract form
     ("fructooligosaccharides", "prebiotic_claim"),
     ("fos",                 "prebiotic_claim"),
+    ("source de fibres",    "fibre_claim"),      # FR regulated claim
+    ("source of fibre",     "fibre_claim"),       # EN
+    ("source of fiber",     "fibre_claim"),       # EN US
+    ("riche en fibres",     "fibre_claim"),       # FR: high in fibre
+    ("high in fibre",       "fibre_claim"),       # EN
+    ("germe de blé",        "fortification_claim"), # FR: wheat germ — Gerblé signature
+    ("wheat germ",          "fortification_claim"), # EN
 
     # ── Vitamins and minerals (fortification claims) ──────────────────────────
     ("vitamin",             "fortification_claim"),
@@ -335,6 +342,8 @@ NEGATIVE_CLAIM_MARKERS = [
     ("sans huile de palme", "no_palm_oil"),
     ("moins de sucre",      "reduced_sugar"),   # "less sugar" — softer claim
     ("réduit en sucres",    "reduced_sugar"),
+    ("aucun colorant",      "no_artificial"),    # FR: no colourant
+    ("sans colorants",      "no_artificial"),    # FR plural
 ]
 
 

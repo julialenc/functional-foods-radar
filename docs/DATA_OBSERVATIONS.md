@@ -554,3 +554,137 @@ incorrectly. Recommend manual review of top 20 scored products before
 
 any public-facing analysis.
 
+
+
+\---
+
+
+
+\### OBS-011 — Gerblé case study: systematic health-washing pattern
+
+\*\*Date:\*\* 19 May 2026
+
+\*\*Product:\*\* Goûter Pépites de Chocolat (Gerblé)
+
+\*\*Score:\*\* 68/100 (highest Gerblé in sample, second highest overall)
+
+
+
+\*\*The pattern:\*\*
+
+Gerblé is the clearest health-washing case in our French sample because
+
+it is not obviously junk (unlike Pringles or Coke) — it is specifically
+
+positioned as a "wellbeing" brand making health-conscious claims on
+
+ultra-processed products.
+
+
+
+\*\*Reality (what our pipeline captures):\*\*
+
+\- NOVA 4 (ultra-processed)
+
+\- Nutriscore C/D
+
+\- UPF markers: emulsifier (lecithin), added flavour, dextrose,
+
+&#x20; starch, raising agents
+
+\- Protein claim (milk proteins as ingredient)
+
+\- Fortification claim (magnesium, calcium, 6 vitamins)
+
+
+
+\*\*Claims on front of pack (what v3 vision will capture):\*\*
+
+1\.  VITALITÉ — brand health concept
+
+2\.  -32% de sucres vs market average
+
+3\.  -54% d'acides gras saturés vs market average
+
+4\.  -56% de sel vs market average
+
+5\.  Source de magnésium (EU Regulation 432/2012 health claim)
+
+6\.  Source de Vitamine E
+
+7\.  Aucun colorant
+
+8\.  Arômes exclusivement naturels
+
+9\.  Sans huile de palme
+
+10\. Fabriqué en France (origin quality signal)
+
+11\. Rainforest Alliance certified (sustainability halo)
+
+12\. RECETTE ENCORE MEILLEURE! (reformulation claim)
+
+
+
+\*\*v1 captures: 4 of 12 claims\*\*
+
+\*\*v3 expected to capture: 10-12 of 12 claims\*\*
+
+\*\*Estimated v3 score: 85-90/100\*\*
+
+
+
+\*\*The comparative claim technique:\*\*
+
+Claims 2-4 compare to "average biscuits on the market" — not to a
+
+healthy baseline. 20g sugar/100g is still high by any nutritional
+
+standard. This is legally compliant but analytically deceptive.
+
+An AI shopping agent seeing "-32% sugar" would score this product
+
+positively without context. This is the core health-washing mechanism
+
+this project is designed to expose.
+
+
+
+\*\*The Rainforest Alliance halo:\*\*
+
+Sustainability certification used as implicit health signal. The product
+
+is no healthier because cacao is Rainforest Alliance certified, but
+
+the green certification logo creates a health/ethical halo effect.
+
+This is a distinct claim type not yet in our dictionary — worth adding
+
+as "sustainability\_halo" claim category in v1.5.
+
+
+
+\*\*Brand-level pattern:\*\*
+
+Gerblé appears 17 times in our 286-product sample — the most of any
+
+brand. All but 2 products are NOVA 4. All make at least one
+
+fortification or functional claim. This is not accidental — it is a
+
+systematic brand strategy of applying health claim language to
+
+ultra-processed biscuits.
+
+
+
+\*\*Implication for v3 sampling strategy:\*\*
+
+Gerblé products should be prioritised in v3 image analysis — high
+
+claim density, systematic pattern, large product range, well-documented
+
+OFF entries with images. Ideal for demonstrating the v1-to-v3 score
+
+uplift.
+
