@@ -494,3 +494,63 @@ Adding before validation risks introducing false positives.
 
 in analyze.py with German variants when ready.
 
+\---
+
+
+
+\### OBS-010 — NLP dictionary false positives identified and fixed
+
+\*\*Date:\*\* 19 May 2026
+
+\*\*Script:\*\* pipeline/analyze.py
+
+\*\*Finding:\*\* Two false positive patterns found on 286-product validation sample:
+
+
+
+1\. curcuma/paprika triggering adaptogen\_claim on Harry's brioche
+
+&#x20;  Root cause: used as natural colorants ("extraits végétaux à pouvoir
+
+&#x20;  colorant"), not as functional supplement claims.
+
+&#x20;  Fix: replaced "curcuma" with "extrait de curcuma" — requires extract
+
+&#x20;  context to fire, not plain colorant use.
+
+
+
+2\. fibre de chicorée triggering prebiotic\_claim on Harry's sandwich bread
+
+&#x20;  Root cause: chicory fibre used as texture/bulk ingredient, not marketed
+
+&#x20;  as a prebiotic supplement.
+
+&#x20;  Fix: replaced "chicorée" with specific prebiotic forms only
+
+&#x20;  (inulin de chicorée, extrait de chicorée).
+
+
+
+\*\*Lesson:\*\* Always validate NLP dictionary on a small known sample before
+
+scaling. False positives inflate health-wash scores and undermine
+
+credibility of the analysis. The validation loop (run → spot → fix → rerun)
+
+is mandatory before v3 scale-up.
+
+
+
+\*\*Remaining risk:\*\* More false positives likely exist in the OTHER language
+
+group (40 products) and will surface when German is added in v1.5.
+
+French products with ingredient-as-colour patterns (saffron, beetroot,
+
+spirulina as colorant) may also trigger adaptogen/fortification flags
+
+incorrectly. Recommend manual review of top 20 scored products before
+
+any public-facing analysis.
+
