@@ -24,7 +24,7 @@ Usage:
 Input:
     data/sample/clean_<timestamp>.csv   (latest file auto-detected)
 
-Output:
+Output:FUNCTIONAL_CLAIM_MARKERS
     data/sample/analyzed_<timestamp>.csv
 
 Architecture note (v2 stub):
@@ -235,8 +235,9 @@ FUNCTIONAL_CLAIM_MARKERS = [
     ("prébiotique",         "prebiotic_claim"),  # FR
     ("inulin",              "prebiotic_claim"),
     ("inuline",             "prebiotic_claim"),  # FR
-    ("chicory",             "prebiotic_claim"),
-    ("chicorée",            "prebiotic_claim"),  # FR
+    ("chicory root",        "prebiotic_claim"),
+    ("inulin de chicorée",  "prebiotic_claim"),  # FR — specific prebiotic form
+    ("extrait de chicorée", "prebiotic_claim"),  # FR — extract form
     ("fructooligosaccharides", "prebiotic_claim"),
     ("fos",                 "prebiotic_claim"),
 
@@ -256,9 +257,9 @@ FUNCTIONAL_CLAIM_MARKERS = [
     # ── Adaptogens / superfoods ────────────────────────────────────────────────
     ("ashwagandha",         "adaptogen_claim"),
     ("maca",                "adaptogen_claim"),
-    ("turmeric",            "adaptogen_claim"),
+    ("turmeric extract",    "adaptogen_claim"),
     ("curcumin",            "adaptogen_claim"),
-    ("curcuma",             "adaptogen_claim"),  # FR
+    ("extrait de curcuma",  "adaptogen_claim"),  # FR — extract specifically
     ("ginseng",             "adaptogen_claim"),
     ("matcha",              "adaptogen_claim"),
     ("spirulina",           "adaptogen_claim"),
@@ -665,7 +666,10 @@ def main():
     df = analyze(input_path)
 
     # ── Summary ───────────────────────────────────────────────────────────────
-    eligible = df[df["nlp_eligible"] == True]
+    eligible = df[df["nlp_eligible"] == True].copy()
+    eligible["health_wash_score"] = pd.to_numeric(
+        eligible["health_wash_score"], errors="coerce"
+    )
 
     print(f"\n  -- Summary --------------------------------------------------")
     print(f"  Total rows:     {len(df)}")
