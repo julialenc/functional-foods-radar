@@ -300,6 +300,19 @@ def clean(input_path):
     df["completeness_score"] = df.apply(completeness_score, axis=1)
     avg = df["completeness_score"].mean()
     print(f"  Step 11 - Completeness score added (avg: {avg:.1f}/100)")
+
+    # Step 11b: Extract primary country from pipe-separated countries field
+    df["primary_country"] = df["countries"].apply(
+        lambda x: str(x).split("|")[0]
+                         .replace("en:", "")
+                         .replace("-", " ")
+                         .title()
+                  if isinstance(x, str) and x.strip() not in ("", "nan")
+                  else "Unknown"
+    )
+    print(f"  Step 11b- Primary country extracted")
+    print(f"            Top countries: "
+          f"{df['primary_country'].value_counts().head(5).to_dict()}")
  
     # Step 12: Flag rows eligible for NLP analysis (EN and FR only)
     # OTHER/UNKNOWN rows retained for nutritional analysis but excluded
