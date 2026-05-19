@@ -688,3 +688,35 @@ OFF entries with images. Ideal for demonstrating the v1-to-v3 score
 
 uplift.
 
+
+
+\----------
+
+
+
+\### OBS-013 — Second NLP false positive: whey as texture ingredient
+
+\*\*Date:\*\* 19 May 2026
+
+\*\*Product:\*\* Toffifee (Storck) — scored 66, flagged protein\_claim
+
+\*\*Root cause:\*\* "whey product" in chocolate confectionery ingredients
+
+triggered protein\_claim. Whey here is a texture/flavour ingredient,
+
+not a protein supplement claim.
+
+\*\*Fix:\*\* Replaced bare "whey" with "whey protein" and "whey protein
+
+isolate" — requires explicit protein context to fire.
+
+\*\*Pattern:\*\* Same class as chicory fibre false positive (OBS-010).
+
+Ingredient-as-functional-component vs ingredient-as-marketing-claim
+
+distinction requires context, not just keyword presence.
+
+\*\*Implication:\*\* Before v3 scale-up, manually review top 20 scored
+
+products for each new category added to the analysis.
+

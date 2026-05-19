@@ -210,8 +210,9 @@ E_NUMBER_MARKERS = [
 FUNCTIONAL_CLAIM_MARKERS = [
 
     # ── Protein claims ────────────────────────────────────────────────────────
-    ("whey",                "protein_claim"),
     ("whey protein",        "protein_claim"),
+    ("whey protein isolate","protein_claim"),
+    ("protéines de lactosérum", "protein_claim"),  # FR: whey protein specific
     ("casein",              "protein_claim"),
     ("protein",             "protein_claim"),
     ("protéine",            "protein_claim"),   # FR
