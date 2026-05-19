@@ -414,8 +414,6 @@ nutritional analysis.
 
 \---
 
-\---
-
 
 
 \### OBS-008 — NLP scope restricted to EN and FR for v1
@@ -465,4 +463,34 @@ an EN/FR dictionary would produce silent false negatives.
 &#x20;   eligible = df\[df\["nlp\_eligible"] == True]
 
 &#x20;   # run NLP only on eligible rows
+
+
+
+\---
+
+
+
+\### OBS-009 — German identified as v1.5 language extension candidate
+
+\*\*Date:\*\* 19 May 2026
+
+\*\*Finding:\*\* Austria = 10 products (3.5% of sample).
+
+German is the third most represented language after FR and EN.
+
+German ingredient vocabulary shares significant overlap with EN/FR
+
+(maltodextrin, lecithin, glucose-sirup, palmöl etc.) making
+
+dictionary extension low-effort and high-accuracy.
+
+
+
+\*\*Decision:\*\* Deferred to v1.5 after EN/FR NLP is validated.
+
+Adding before validation risks introducing false positives.
+
+\*\*Action:\*\* Extend ULTRA\_PROCESSED\_MARKERS and FUNCTIONAL\_CLAIM\_MARKERS
+
+in analyze.py with German variants when ready.
 

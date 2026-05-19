@@ -28,7 +28,7 @@ CATEGORIES = [
     "cereals",
 ]
 
-PRODUCTS_PER_CATEGORY = 150  # increase later for production runs
+PRODUCTS_PER_CATEGORY = 500  # increase later for production runs
 
 BASE_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 
@@ -65,48 +65,110 @@ SAMPLE_DIR = os.path.join(ROOT, "data", "sample")
 
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
-def fetch_category(category: str, n: int = PRODUCTS_PER_CATEGORY) -> list[dict]:
+PAGE_SIZE = 100          # OFF API hard cap per page
+PAGE_DELAY = 8           # seconds between pages — polite to OFF servers
+MAX_RETRIES = 3          # attempts per page before giving up
+
+
+def fetch_page(category: str, page: int, headers: dict) -> list[dict]:
     """
-    Fetch n products for a given OFF category.
-    Returns a list of product dicts.
+    Fetch a single page of products for a category.
+    Returns list of product dicts, or empty list on failure.
     """
+    import time
+
     params = {
         "action":           "process",
         "tagtype_0":        "categories",
         "tag_contains_0":   "contains",
         "tag_0":            category,
         "fields":           FIELDS,
-        "page_size":        n,
-        "page":             1,
+        "page_size":        PAGE_SIZE,
+        "page":             page,
         "json":             1,
     }
 
-    headers = {"User-Agent": USER_AGENT}
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(
+                BASE_URL, params=params,
+                headers=headers, timeout=30
+            )
+            if response.status_code == 503:
+                wait = 30 * (attempt + 1)
+                print(f"    503 on page {page}, "
+                      f"retrying in {wait}s "
+                      f"(attempt {attempt + 1}/{MAX_RETRIES})...")
+                time.sleep(wait)
+                continue
+
+            response.raise_for_status()
+
+            if not response.text.strip():
+                print(f"    Empty response on page {page}, skipping")
+                return []
+
+            data = response.json()
+            return data.get("products", [])
+
+        except Exception as e:
+            print(f"    Error on page {page} attempt {attempt + 1}: {e}")
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(20)
+
+    print(f"    Giving up on page {page} after {MAX_RETRIES} attempts")
+    return []
+
+
+def fetch_category(category: str,
+                   target: int = PRODUCTS_PER_CATEGORY) -> list[dict]:
+    """
+    Fetch up to `target` products for a category using pagination.
+    Requests pages sequentially until target is reached or
+    OFF returns no more products.
+    Returns deduplicated list of product dicts.
+    """
     import time
 
-    print(f"  Fetching '{category}' ({n} products)...")
-    for attempt in range(3):
-        response = requests.get(BASE_URL, params=params, headers=headers, timeout=30)
-        if response.status_code == 503:
-            wait = 20 * (attempt + 1)
-            print(f"  503 received, retrying in {wait}s (attempt {attempt + 1}/3)...")
-            time.sleep(wait)
-            continue
-        response.raise_for_status()
-        if not response.text.strip():
-            print(f"  Empty response received, skipping category '{category}'")
-            return []
-        break
+    headers  = {"User-Agent": USER_AGENT}
+    all_products = []
+    seen_codes   = set()
+    page         = 1
 
-    try:
-        data = response.json()
-    except Exception as e:
-        print(f"  Failed to parse JSON for '{category}': {e}")
-        return []
+    print(f"  Fetching '{category}' (target: {target} products, "
+          f"{PAGE_SIZE}/page)...")
 
-    products = data.get("products", [])
-    print(f"  → {len(products)} products received")
-    return products
+    while len(all_products) < target:
+        page_products = fetch_page(category, page, headers)
+
+        if not page_products:
+            print(f"    No products on page {page} — "
+                  f"category exhausted or server error")
+            break
+
+        # Deduplicate within this category fetch
+        new = [p for p in page_products
+               if p.get("code") not in seen_codes]
+        for p in new:
+            seen_codes.add(p.get("code"))
+        all_products.extend(new)
+
+        print(f"    Page {page}: {len(new)} new products "
+              f"(total so far: {len(all_products)})")
+
+        # Stop if OFF returned fewer than PAGE_SIZE — means no more pages
+        if len(page_products) < PAGE_SIZE:
+            print(f"    Reached end of category at page {page}")
+            break
+
+        page += 1
+
+        # Polite delay between pages
+        if len(all_products) < target:
+            time.sleep(PAGE_DELAY)
+
+    print(f"  → {len(all_products)} total products for '{category}'")
+    return all_products[:target]
 
 
 # ── Flatten ───────────────────────────────────────────────────────────────────
