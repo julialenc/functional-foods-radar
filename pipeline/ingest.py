@@ -269,6 +269,17 @@ def main():
     print(f"\nDone. {len(df)} total products across {len(CATEGORIES)} categories.")
     print(f"Nulls per column:\n{df.isnull().sum().to_string()}\n")
 
+    # Run summary — useful for unattended overnight runs
+    print(f"{'='*50}")
+    print(f"RUN SUMMARY")
+    print(f"{'='*50}")
+    for category in CATEGORIES:
+        cat_count = len(df[df['query_category'] == category])
+        status = "✓ OK" if cat_count >= 400 else "⚠ PARTIAL" if cat_count > 0 else "✗ FAILED"
+        print(f"  {category:<15} {cat_count:>5} products  {status}")
+    print(f"  {'TOTAL':<15} {len(df):>5} products")
+    print(f"{'='*50}")
+
 
 if __name__ == "__main__":
     main()
