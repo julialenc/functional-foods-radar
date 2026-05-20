@@ -720,3 +720,69 @@ distinction requires context, not just keyword presence.
 
 products for each new category added to the analysis.
 
+
+
+\---
+
+
+
+\### OBS-014 — Brand average score is misleading for conglomerates
+
+\*\*Date:\*\* 20 May 2026
+
+\*\*Finding:\*\* Brand-level health-wash averages produce different results
+
+depending on portfolio breadth.
+
+
+
+\*\*Example comparison:\*\*
+
+\- Gerblé: avg=33.1, n=49 — pure biscuit/snack brand, entire portfolio
+
+&#x20; is functional-claim biscuits. Average is meaningful and consistent.
+
+\- Nestlé: avg=25.7, n=35 — conglomerate whose sample includes waters
+
+&#x20; (Perrier, Hepar, San Pellegrino scoring \~0-3) which dilute the average
+
+&#x20; significantly. Nestlé's processed snack sub-brands (Chocapic, Nesquik,
+
+&#x20; Fitness) score 40-44 but appear as separate primary\_brand entries,
+
+&#x20; further fragmenting the picture.
+
+
+
+\*\*Implication for analysis:\*\*
+
+Brand average score is most meaningful for focused brands (Gerblé,
+
+Pringles, Nature Valley) and least meaningful for conglomerates
+
+(Nestlé, Danone, Unilever) whose portfolios span from mineral water
+
+to ultra-processed snacks.
+
+
+
+\*\*Recommended Power BI filter:\*\*
+
+Add a category slicer so users can compare brands within a single
+
+category (e.g. "cereals only" removes waters from Nestlé's average).
+
+This makes cross-brand comparison fair and meaningful.
+
+
+
+\*\*Planned fix:\*\*
+
+Company mapping table (v1.5) will add parent\_company field enabling:
+
+\- "Nestlé total" vs "Nestlé snacks only" views
+
+\- Correct attribution of Fitness, Perrier, San Pellegrino to Nestlé
+
+\- Sub-brand fragmentation eliminated
+
