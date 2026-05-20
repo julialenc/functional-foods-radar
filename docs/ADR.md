@@ -120,7 +120,7 @@ OFF is the only open, crowdsourced, global food product database with structured
 
 
 
-\*\*Decision:\*\* Pull 16 specific fields from the OFF API rather than full product records.
+\*\*Decision:\*\* Pull 15 active fields from the OFF API rather than full product records. A 16th field (`image_url`) is stubbed as a comment for v3 activation.
 
 
 

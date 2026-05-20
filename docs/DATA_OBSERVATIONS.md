@@ -690,7 +690,75 @@ uplift.
 
 
 
-\----------
+\---
+
+
+
+\### OBS-012 — Production data strategy: bulk export + weekly API diff
+
+\*\*Date:\*\* 19 May 2026
+
+
+
+\*\*Finding:\*\* OFF search API is unreliable for bulk pagination (503s at
+
+scale). Not intentional blocking — server load from non-profit
+
+infrastructure. Retry logic recovers most failures but cannot guarantee
+
+complete pulls at 500+ products per category.
+
+
+
+\*\*Production strategy decided:\*\*
+
+
+
+Phase 1 — one-time baseline (Week 0):
+
+Download OFF full CSV export:
+
+https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz
+
+Filter to relevant categories in-memory (pandas chunked read).
+
+Load filtered \~50,000-100,000 products into SQLite.
+
+
+
+Phase 2 — weekly incremental updates:
+
+Query API for products with last\_modified\_t > 7 days ago.
+
+Expected volume: 200-500 new/modified products per week.
+
+INSERT OR REPLACE on barcode — no full table scan needed.
+
+SQLite barcode index makes deduplication instant at any scale.
+
+
+
+\*\*Why this works:\*\*
+
+Bulk export has no rate limits — downloaded once, queried locally.
+
+Weekly diff is small enough that 503s are recoverable.
+
+New product detection (created\_t in last 7 days) is the core
+
+production use case — tracking the Great Protein Reset in real time.
+
+
+
+\*\*Disk requirements:\*\* \~15GB for download + decompression working space.
+
+\*\*Download time:\*\* \~30 minutes at 40 Mbps.
+
+\*\*Scheduled for:\*\* after v3 LLM vision sprint is complete.
+
+
+
+\---
 
 
 
