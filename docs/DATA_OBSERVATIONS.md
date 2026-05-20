@@ -786,3 +786,21 @@ Company mapping table (v1.5) will add parent\_company field enabling:
 
 \- Sub-brand fragmentation eliminated
 
+
+
+\### OBS-015 — Salt outlier: 295g/100g detected and capped
+
+\*\*Date:\*\* 20 May 2026
+
+\*\*Finding:\*\* One product had salt\_100g = 295 — physically impossible
+
+(pure salt = 100g/100g). Likely contributor entered mg instead of g,
+
+or confused sodium with salt (sodium × 2.5 = salt equivalent).
+
+Cap of 100g/100g in clean.py caught it correctly.
+
+\*\*Implication:\*\* Salt/sodium unit confusion is a known OFF data issue.
+
+Consider adding a sodium field cross-check in a future reality check.
+
