@@ -224,3 +224,7 @@ data/sample/*.csv
 # Keep the placeholder folders
 !data/raw/.gitkeep
 !data/sample/.gitkeep
+
+# Log files — generated at runtime, not committed
+logs/*.txt
+logs/*.log
