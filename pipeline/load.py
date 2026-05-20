@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS products (
     barcode                TEXT PRIMARY KEY,
     product_name           TEXT,
     brands                 TEXT,
+    primary_brand          TEXT,
     quantity               TEXT,
     packaging              TEXT,
     query_category         TEXT,
@@ -198,7 +199,7 @@ def safe_val(val):
 # ── Products table ────────────────────────────────────────────────────────────
 
 PRODUCT_COLS = [
-    "barcode", "product_name", "brands", "quantity", "packaging",
+    "barcode", "product_name", "brands", "primary_brand", "quantity", "packaging",
     "query_category", "off_categories", "countries", "primary_country",
     "labels", "ingredients_text", "additives_tags",
     "energy_kcal", "fat_100g", "saturated_fat_100g", "carbs_100g",
@@ -513,11 +514,11 @@ def main():
         categories = cursor.fetchall()
 
         cursor.execute("""
-            SELECT brands, AVG(health_wash_score) as avg_score, COUNT(*) as cnt
+            SELECT primary_brand, AVG(health_wash_score) as avg_score, COUNT(*) as cnt
             FROM products p
             JOIN nlp_results n ON p.barcode = n.barcode
             WHERE n.health_wash_score IS NOT NULL
-            GROUP BY brands
+            GROUP BY primary_brand
             HAVING cnt >= 3
             ORDER BY avg_score DESC
             LIMIT 10

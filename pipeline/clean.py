@@ -258,7 +258,19 @@ def clean(input_path):
         .str.strip()
         .str.strip(",")
     )
-    print(f"  Step 4  - Brands normalised (lowercase, stripped)")
+    df["primary_brand"] = df["brands"].apply(
+        lambda x: str(x).split(",")[0].strip()
+        if isinstance(x, str) and x.strip() not in ("", "nan")
+        else "unknown"
+    )
+    # Strip accents for consistent grouping — nestlé -> nestle
+    # Full company normalisation via mapping table planned for v1.5
+    df["primary_brand"] = df["primary_brand"]\
+        .str.normalize("NFKD")\
+        .str.encode("ascii", errors="ignore")\
+        .str.decode("ascii")
+    print(f"  Step 4  - Brands normalised, primary_brand extracted, accents stripped")
+
  
     # Step 5: Detect ingredient language
     df["ingredients_lang"] = df["ingredients_text"].apply(detect_language)
