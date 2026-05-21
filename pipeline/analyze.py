@@ -462,7 +462,11 @@ def compute_health_wash_score(upf_flags, claim_flags, neg_claim_flags,
         score += min(severity_total * 3, 40)
 
     # ── Component B: Claim inflation (0-30 pts) ──────────────────────────────
-    total_claims = len(claim_flags) + len(neg_claim_flags)
+    # Exclude pure energy_claim from inflation score
+    # Energy drinks claiming energy is tautological, not health-washing
+    non_energy_claims = [f for f in claim_flags
+                         if f[1] != "energy_claim"]
+    total_claims = len(non_energy_claims) + len(neg_claim_flags)
     score += min(total_claims * 5, 30)
 
     # ── Component C: NOVA / Nutriscore contradiction (0-30 pts) ─────────────
@@ -475,7 +479,11 @@ def compute_health_wash_score(upf_flags, claim_flags, neg_claim_flags,
         except (ValueError, TypeError):
             nova = None
 
-        if nova in (3.0, 4.0):
+        # Only apply NOVA contradiction if there are non-energy claims
+        has_non_energy_claims = any(
+            f[1] != "energy_claim" for f in claim_flags
+        )
+        if nova in (3.0, 4.0) and has_non_energy_claims:
             score += 15 if nova == 3.0 else 20
 
         # Nutriscore contradiction
