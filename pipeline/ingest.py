@@ -167,7 +167,7 @@ def fetch_category(category: str,
         if len(all_products) < target:
             time.sleep(PAGE_DELAY)
 
-    print(f"  → {len(all_products)} total products for '{category}'")
+    print(f"  -> {len(all_products)} total products for '{category}'")
     return all_products[:target]
 
 
@@ -229,7 +229,7 @@ def save_raw(products: list[dict], category: str, timestamp: str) -> None:
     path = os.path.join(RAW_DIR, filename)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(products, f, ensure_ascii=False, indent=2)
-    print(f"  Raw JSON saved → {filename}")
+    print(f"  Raw JSON saved -> {filename}")
 
 
 def save_sample(df: pd.DataFrame, timestamp: str) -> None:
@@ -237,7 +237,7 @@ def save_sample(df: pd.DataFrame, timestamp: str) -> None:
     filename = f"sample_all_{timestamp}.csv"
     path = os.path.join(SAMPLE_DIR, filename)
     df.to_csv(path, index=False, encoding="utf-8-sig")  # utf-8-sig for Excel compatibility
-    print(f"  Sample CSV saved → {filename}  ({len(df)} rows, {len(df.columns)} columns)")
+    print(f"  Sample CSV saved -> {filename}  ({len(df)} rows, {len(df.columns)} columns)")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
