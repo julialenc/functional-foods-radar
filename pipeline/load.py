@@ -191,8 +191,11 @@ def safe_val(val):
         return None
     if isinstance(val, bool):
         return 1 if val else 0
-    if hasattr(val, 'item'):   # numpy scalar
-        return val.item()
+    if hasattr(val, 'item'):
+        val = val.item()
+    # Convert large integers to string to avoid SQLite overflow
+    if isinstance(val, int) and (val > 2**63 - 1 or val < -(2**63)):
+        return str(val)
     return val
 
 
@@ -521,7 +524,7 @@ def main():
             GROUP BY primary_brand
             HAVING cnt >= 3
             ORDER BY avg_score DESC
-            LIMIT 10
+            LIMIT 15
         """)
         top_brands = cursor.fetchall()
 
