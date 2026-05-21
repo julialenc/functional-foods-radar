@@ -112,3 +112,9 @@ def explore():
 
 if __name__ == "__main__":
     explore()
+
+# NOTE: image_url contains "/invalid/" for products with no front-of-pack image
+# Filter before v3 vision processing:
+#   df = df[~df["image_url"].str.contains("/invalid/", na=True)]
+# Expected valid image rate: ~60-70% of full database
+# See DATA_OBSERVATIONS OBS-018
