@@ -938,3 +938,31 @@ between v1 score and true health-wash score in either direction.
 
 \---
 
+
+
+\### OBS-017 — Energy drink scoring calibration
+
+\*\*Date:\*\* 21 May 2026
+
+\*\*Finding:\*\* Pure energy\_claim (caffeine, taurine in energy drinks) excluded
+
+from health-wash score Components B and C. An energy drink claiming energy
+
+is tautological, not health-washing. Fix applied in analyze.py.
+
+
+
+\*\*Result:\*\* Coke dropped from \~47 to 6-27 (correct).
+
+Monster Energy remains at 76 (correct — makes fortification + adaptogen
+
+claims beyond the base energy claim). Red Bull 44-55 (borderline — makes
+
+fortification claims on top of energy claim).
+
+
+
+\*\*Limitation:\*\* Brand averages at small n (Monster n=3) are unreliable.
+
+Will stabilise at 9,000+ products.
+
