@@ -872,3 +872,69 @@ Cap of 100g/100g in clean.py caught it correctly.
 
 Consider adding a sodium field cross-check in a future reality check.
 
+
+
+\---
+
+
+
+\### OBS-016 — False positive pattern: protein as ingredient vs protein as claim
+
+\*\*Date:\*\* 21 May 2026
+
+\*\*Product:\*\* DINOSAURUS Chocolat (Lotus) — scored 72, flagged protein\_claim
+
+\*\*Root cause:\*\* Ingredient list contains "protéine végétale (pois)" — pea
+
+protein added as a functional ingredient. No protein claims on front of
+
+pack. Our NLP correctly detects the ingredient but cannot distinguish
+
+between "protein added quietly" and "protein claimed loudly."
+
+
+
+\*\*This is the core v1 limitation:\*\* NLP reads ingredient reality.
+
+v3 LLM vision reads claim language. The gap between them is the
+
+health-wash measurement. A product with protein ingredient but no
+
+protein claim is NOT health-washing — it's the opposite.
+
+
+
+\*\*Implication for scoring:\*\* health\_wash\_score Component B
+
+(claim inflation) should ideally be fed by v3 front-of-pack claims,
+
+not by ingredient text alone. In v1, using ingredient text as a claim
+
+proxy overstates scores for products that add functional ingredients
+
+without marketing them.
+
+
+
+\*\*Action:\*\* No dictionary fix needed — the detection is technically
+
+correct. Document as a known v1 limitation. v3 will naturally resolve
+
+this by replacing ingredient-based claim detection with vision-based
+
+claim extraction for the Component B score.
+
+
+
+\*\*Implication for v3 sampling:\*\* Products scoring HIGH or MEDIUM
+
+primarily due to protein\_claim in ingredient text should be prioritised
+
+for v3 image analysis — they are the most likely to show the gap
+
+between v1 score and true health-wash score in either direction.
+
+
+
+\---
+
