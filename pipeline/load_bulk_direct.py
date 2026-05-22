@@ -6,8 +6,8 @@ from load import (init_db, load_products, load_nlp_results,
                   compute_weekly_brand_summary, export_powerbi_csvs,
                   log_run, DB_PATH, SAMPLE_DIR)
 
-timestamp = "20260522_001753"
-path = os.path.join(SAMPLE_DIR, f"bulk_analyzed_{timestamp}.csv")
+timestamp = "20260522_v2"
+path = os.path.join(SAMPLE_DIR, "bulk_analyzed_20260522_v2.csv")
 print(f"Loading {path}")
 df = pd.read_csv(path, encoding="utf-8-sig", low_memory=False,
                  dtype={"barcode": str})
