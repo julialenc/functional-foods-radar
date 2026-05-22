@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS products (
     created_t              TEXT,
     last_modified_t        TEXT,
     ingested_at            TEXT       -- when this row was loaded by us
+    image_url              TEXT       -- front-of-pack image URL for v3 vision
 );
 """
 
@@ -208,7 +209,7 @@ PRODUCT_COLS = [
     "energy_kcal", "fat_100g", "saturated_fat_100g", "carbs_100g",
     "sugars_100g", "fiber_100g", "protein_100g", "salt_100g",
     "nutriscore_grade", "nova_group", "completeness_score",
-    "ingredients_lang", "nlp_eligible", "created_t", "last_modified_t",
+    "ingredients_lang", "nlp_eligible", "created_t", "last_modified_t","image_url",
 ]
 
 def load_products(df, conn, timestamp):
