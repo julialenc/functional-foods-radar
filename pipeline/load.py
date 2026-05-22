@@ -98,8 +98,8 @@ CREATE TABLE IF NOT EXISTS nlp_results (
     functional_claims_found    TEXT,
     negative_claim_count       INTEGER,
     negative_claims_found      TEXT,
-    health_wash_score          REAL,
-    health_wash_category       TEXT,
+    health_wash_score_v1       REAL,
+    health_wash_category_v1    TEXT,
     cluster_label              TEXT,      -- null in v1, populated in v2
     analyzed_at                TEXT,      -- when this row was analyzed
     FOREIGN KEY (barcode) REFERENCES products(barcode)
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS weekly_brand_summary (
     brands                     TEXT,
     query_category             TEXT,
     product_count              INTEGER,
-    avg_health_wash_score      REAL,
+    avg_health_wash_score_v1   REAL,
     high_score_count           INTEGER,   -- score >= 70
     medium_score_count         INTEGER,   -- score 45-69
     pct_nova4                  REAL,
@@ -147,8 +147,8 @@ DDL_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_products_country ON products(primary_country);",
     "CREATE INDEX IF NOT EXISTS idx_products_nova ON products(nova_group);",
     "CREATE INDEX IF NOT EXISTS idx_products_modified ON products(last_modified_t);",
-    "CREATE INDEX IF NOT EXISTS idx_nlp_score ON nlp_results(health_wash_score);",
-    "CREATE INDEX IF NOT EXISTS idx_nlp_category ON nlp_results(health_wash_category);",
+    "CREATE INDEX IF NOT EXISTS idx_nlp_score ON nlp_results(health_wash_score_v1);",
+    "CREATE INDEX IF NOT EXISTS idx_nlp_category ON nlp_results(health_wash_category_v1);",
 ]
 
 
@@ -263,15 +263,15 @@ NLP_COLS = [
     "has_ultra_processed", "e_number_count", "e_numbers_found",
     "has_artificial_sweetener", "functional_claim_count",
     "functional_claims_found", "negative_claim_count",
-    "negative_claims_found", "health_wash_score",
-    "health_wash_category", "cluster_label",
+    "negative_claims_found", "health_wash_score_v1",
+    "health_wash_category_v1", "cluster_label",
 ]
 
 def load_nlp_results(df, conn, timestamp):
     """
     UPSERT NLP results into the nlp_results table.
     Only loads rows where nlp_eligible == True OR where
-    health_wash_score is not null (some ineligible rows
+    health_wash_score_v1 is not null (some ineligible rows
     may have partial scores).
     Returns (inserted, updated) counts.
     """
@@ -324,8 +324,8 @@ def compute_weekly_brand_summary(df, conn, timestamp):
 
     # Only use NLP-eligible rows with scores
     eligible = df[df["nlp_eligible"] == True].copy()
-    eligible["health_wash_score"] = pd.to_numeric(
-        eligible["health_wash_score"], errors="coerce"
+    eligible["health_wash_score_v1"] = pd.to_numeric(
+        eligible["health_wash_score_v1"], errors="coerce"
     )
     eligible["nova_group"] = pd.to_numeric(
         eligible["nova_group"], errors="coerce"
@@ -343,11 +343,11 @@ def compute_weekly_brand_summary(df, conn, timestamp):
             continue
 
         product_count    = len(group)
-        avg_score        = group["health_wash_score"].mean()
-        high_count       = (group["health_wash_score"] >= 70).sum()
+        avg_score        = group["health_wash_score_v1"].mean()
+        high_count       = (group["health_wash_score_v1"] >= 70).sum()
         medium_count     = (
-            (group["health_wash_score"] >= 45) &
-            (group["health_wash_score"] < 70)
+            (group["health_wash_score_v1"] >= 45) &
+            (group["health_wash_score_v1"] < 70)
         ).sum()
         pct_nova4        = (
             (group["nova_group"] == 4.0).sum() / product_count * 100
@@ -374,7 +374,7 @@ def compute_weekly_brand_summary(df, conn, timestamp):
         cursor.execute("""
             INSERT INTO weekly_brand_summary (
                 week_ending, brands, query_category,
-                product_count, avg_health_wash_score,
+                product_count, avg_health_wash_score_v1,
                 high_score_count, medium_score_count,
                 pct_nova4, pct_with_functional_claims,
                 pct_with_artificial_sweet, top_claim_type,
@@ -419,7 +419,7 @@ def export_powerbi_csvs(df, timestamp):
 
     # NLP CSV
     nlp_cols_csv = [c for c in NLP_COLS if c in df.columns] + \
-                   ["health_wash_category"]
+                   ["health_wash_category_v1"]
     nlp_cols_csv = [c for c in nlp_cols_csv if c in df.columns]
     df_nlp = df[nlp_cols_csv].copy()
     nlp_path = os.path.join(
@@ -504,23 +504,23 @@ def main():
         cursor.execute("SELECT COUNT(*) FROM products")
         total_products = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM nlp_results WHERE health_wash_score IS NOT NULL")
+        cursor.execute("SELECT COUNT(*) FROM nlp_results WHERE health_wash_score_v1 IS NOT NULL")
         total_analyzed = cursor.fetchone()[0]
 
         cursor.execute("""
-            SELECT health_wash_category, COUNT(*) as cnt
+            SELECT health_wash_category_v1, COUNT(*) as cnt
             FROM nlp_results
-            WHERE health_wash_category IS NOT NULL
-            GROUP BY health_wash_category
+            WHERE health_wash_category_v1 IS NOT NULL
+            GROUP BY health_wash_category_v1
             ORDER BY cnt DESC
         """)
         categories = cursor.fetchall()
 
         cursor.execute("""
-            SELECT primary_brand, AVG(health_wash_score) as avg_score, COUNT(*) as cnt
+            SELECT primary_brand, AVG(health_wash_score_v1) as avg_score, COUNT(*) as cnt
             FROM products p
             JOIN nlp_results n ON p.barcode = n.barcode
-            WHERE n.health_wash_score IS NOT NULL
+            WHERE n.health_wash_score_v1 IS NOT NULL
             GROUP BY primary_brand
             HAVING cnt >= 3
             ORDER BY avg_score DESC
