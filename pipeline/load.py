@@ -103,7 +103,15 @@ CREATE TABLE IF NOT EXISTS nlp_results (
     health_wash_category_v1    TEXT,
     cluster_label              TEXT,      -- null in v1, populated in v2
     analyzed_at                TEXT,      -- when this row was analyzed
+    health_wash_score_v3       REAL,      -- populated by merge_scores.py
+    health_wash_category_v3    TEXT,
+    v3_claims_found            TEXT,
+    ht_sugar_loophole          INTEGER,   -- 1/0 half-truth pattern flags
+    ht_protein_masks_fat       INTEGER,
+    ht_fibre_distraction       INTEGER,
+    ht_vegan_calorie_trap      INTEGER,
     FOREIGN KEY (barcode) REFERENCES products(barcode)
+    
 );
 """
 
@@ -266,6 +274,9 @@ NLP_COLS = [
     "functional_claims_found", "negative_claim_count",
     "negative_claims_found", "health_wash_score_v1",
     "health_wash_category_v1", "cluster_label",
+    "health_wash_score_v3", "health_wash_category_v3", "v3_claims_found",
+    "ht_sugar_loophole", "ht_protein_masks_fat",
+    "ht_fibre_distraction", "ht_vegan_calorie_trap",
 ]
 
 def load_nlp_results(df, conn, timestamp):
