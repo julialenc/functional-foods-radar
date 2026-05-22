@@ -233,3 +233,6 @@ logs/*.log
 data/raw/off_full_export.csv.gz
 data/raw/*.gz
 database/*.db
+
+# Secrets — never commit
+.env
