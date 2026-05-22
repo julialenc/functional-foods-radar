@@ -118,42 +118,17 @@ A living database of health-washing patterns with specific, named examples. The 
 
 ## The health-wash score
 
+**v1 score (current):** Each product receives a UPF reality score from 0 to 40 based on severity-weighted ultra-processed ingredient markers detected in the ingredient list. This measures what a product *contains*.
 
+**v3 score (in progress):** Azure Vision OCR reads front-of-pack images. GPT-4o-mini extracts the actual claims brands make. The gap between UPF reality and front-of-pack claims produces the final health-washing score.
 
-Each product receives a score from 0 to 100. The score has three components:
+**Four half-truth patterns** are flagged regardless of score:
+- HT-1 Sugar loophole — "no added sugar" claim with high actual sugar content (e.g. fruit concentrates)
+- HT-2 Protein masks fat — protein claim on calorie-dense or high saturated fat product
+- HT-3 Fibre distraction — fibre/whole grain claim on NOVA 4 product with high sugar
+- HT-4 Vegan calorie trap — plant milk with fortification halo but calorie-dense
 
-
-
-**Component A — UPF reality (0–40 points)**
-
-Severity-weighted count of ultra-processed markers in the ingredient list. Carrageenan (E407, IARC Group 2B) scores 3. Lecithin scores 1. Glucose syrup, maltodextrin, artificial sweeteners score 2–3.
-
-
-
-**Component B — Claim inflation (0–30 points)**
-
-Number and type of functional claims detected. More claims on a product raise the health-washing potential ceiling.
-
-
-
-**Component C — Contradiction (0–30 points)**
-
-Claim present AND NOVA group 4 = contradiction penalty. Claim present AND Nutriscore D/E = additional penalty. Protein claim with less than 10g protein per 100g = specific penalty.
-
-
-
-**Score interpretation:**
-
-* 0–19: CLEAN — no significant signals
-* 20–44: LOW — minor signals
-* 45–69: MEDIUM — some health-washing signals
-* 70–100: HIGH — strong health-washing signals
-
-
-
-**Note:** This is a v1 proxy score based on ingredient text analysis. v3 LLM vision will add the front-of-pack claim layer, expected to increase scores for products like Gerblé (v1: 68, v3 estimated: 85–90) where most claims are on the packaging, not in the ingredient list.
-
-
+These patterns are more analytically precise than a single score and directly reflect how health-washing operates in practice — not through false claims, but through technically true statements that mislead in context.
 
 \---
 
