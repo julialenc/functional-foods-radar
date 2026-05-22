@@ -40,6 +40,8 @@ Environment variables required:
     AZURE_OPENAI_ENDPOINT  e.g. https://your-resource.openai.azure.com/
     AZURE_OPENAI_KEY       key from Azure OpenAI portal
     AZURE_OPENAI_DEPLOYMENT  e.g. gpt-4o-mini
+    ANTHROPIC_KEY     = os.getenv("ANTHROPIC_API_KEY", "")
+    ANTHROPIC_MODEL   = "claude-haiku-4-5-20251001"
 
     OR set them in a .env file in the project root.
 
@@ -55,6 +57,7 @@ import sys
 import json
 import time
 import argparse
+import anthropic
 import requests
 import pandas as pd
 from datetime import datetime
@@ -81,7 +84,7 @@ COST_ALERT_CHF    = float(os.getenv("AZURE_COST_ALERT_CHF", "80"))
 
 # Cost per 1000 operations (CHF estimates)
 OCR_COST_PER_1K   = 1.50
-LLM_COST_PER_1K   = 0.50
+LLM_COST_PER_1K   = 0.10  # Claude Haiku ~$0.25/M tokens, ~500 tokens/call
 
 # ── GPT-4o-mini system prompt ─────────────────────────────────────────────────
 
@@ -199,47 +202,34 @@ def ocr_image(image_url: str, max_retries: int = 3) -> tuple[str, str]:
 
 def extract_claims(ocr_text: str, product_name: str = "") -> tuple[dict, str]:
     """
-    Send OCR text to GPT-4o-mini for structured claim extraction.
+    Send OCR text to Claude Haiku for structured claim extraction.
     Returns (claims_dict, status).
     """
-    if not OPENAI_ENDPOINT or not OPENAI_KEY:
+    if not ANTHROPIC_KEY:
         return {}, "no_credentials"
 
     if not ocr_text or len(ocr_text.strip()) < 10:
         return {"no_claims_detected": True, "ocr_quality": "poor"}, "skipped_empty"
 
-    url = (f"{OPENAI_ENDPOINT}/openai/deployments/{OPENAI_DEPLOYMENT}"
-           f"/chat/completions?api-version=2024-02-15-preview")
-
-    headers = {
-        "api-key": OPENAI_KEY,
-        "Content-Type": "application/json",
-    }
+    client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
     user_message = f"Product: {product_name}\n\nFront-of-pack text:\n{ocr_text[:2000]}"
 
-    body = {
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user_message},
-        ],
-        "temperature": 0,
-        "max_tokens": 500,
-    }
-
     try:
-        resp = requests.post(url, headers=headers, json=body, timeout=30)
-        if resp.status_code == 200:
-            content = resp.json()["choices"][0]["message"]["content"].strip()
-            # Strip markdown fences if present
-            if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            claims = json.loads(content)
-            return claims, "success"
-        else:
-            return {}, f"http_{resp.status_code}"
+        message = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=500,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}]
+        )
+        content = message.content[0].text.strip()
+        # Strip markdown fences if present
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+        claims = json.loads(content)
+        return claims, "success"
     except json.JSONDecodeError:
         return {}, "json_parse_error"
     except Exception as e:
@@ -313,8 +303,7 @@ def main():
     missing = []
     if not VISION_ENDPOINT:  missing.append("AZURE_VISION_ENDPOINT")
     if not VISION_KEY:        missing.append("AZURE_VISION_KEY")
-    if not OPENAI_ENDPOINT:   missing.append("AZURE_OPENAI_ENDPOINT")
-    if not OPENAI_KEY:        missing.append("AZURE_OPENAI_KEY")
+    if not ANTHROPIC_KEY:     missing.append("ANTHROPIC_API_KEY")
     if missing:
         print(f"\n  ERROR: Missing environment variables:")
         for m in missing:
