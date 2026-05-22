@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS products (
     nlp_eligible           INTEGER,   -- 1/0 boolean
     created_t              TEXT,
     last_modified_t        TEXT,
-    ingested_at            TEXT       -- when this row was loaded by us
+    ingested_at            TEXT,      -- when this row was loaded by us
     image_url              TEXT       -- front-of-pack image URL for v3 vision
 );
 """
