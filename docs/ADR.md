@@ -377,6 +377,57 @@ Option A also produces the `health\_wash\_score` that will serve as the REALITY 
 \*\*UK/US priority rationale:\*\* French market dominates current sample (69% FR language). UK and US markets have significantly higher health-washing density — protein bars, "clean label" snacks, superfood positioning are more aggressive in Anglo-Saxon markets. OFF coverage of UK/US products is lower than France but sufficient for trend analysis.
 
 
+---
+
+### ADR-010 — Architectural pivot: Component B and C fed by vision, not NLP
+**Date:** 22 May 2026
+**Status:** Active — implements from v3 onward
+
+**Decision:** The health_wash_score Component B (claim inflation) and
+Component C (contradiction) will be fed exclusively by Azure Vision
+front-of-pack extraction output, not by ingredient text NLP.
+
+**Rationale:**
+Component B in v1 used ingredient text as a proxy for front-of-pack
+claims. This produced systematic false positives at scale:
+- Enriched flour vitamins (niacin, riboflavin) triggering fortification_claim
+- Milk proteins as texture ingredients triggering protein_claim
+- Natural colorants (curcumin, paprika) triggering adaptogen_claim
+- Energy drinks making tautological energy claims scoring high
+
+Root cause: ingredient text describes what a product CONTAINS.
+Front-of-pack describes what a brand CLAIMS. These are different
+information sources requiring different detection methods.
+
+**New architecture (implemented in v3):**
+  Component A (UPF reality, 0-40pts):
+    Source: ingredients_text + additives_tags (NLP dictionary)
+    Unchanged from v1
+
+  Component B (claim inflation, 0-30pts):
+    Source: Azure Vision OCR → GPT-4o-mini structured extraction
+    Populated by vision_extract.py output, joined on barcode
+    v1 interim: set to 0 until vision data available
+
+  Component C (contradiction gap, 0-30pts):
+    Source: vision claims × NOVA group × Nutriscore
+    Populated after v3 merge in merge_scores.py
+    v1 interim: NOVA/Nutriscore penalty only, no claim requirement
+
+**Cost optimization (from practitioner input):**
+  Tier 1: Azure AI Vision Read API (~1.50 CHF/1000 images) for OCR
+  Tier 2: GPT-4o-mini on extracted text (not images) for claim parsing
+  Budget: 100 CHF covers 7,000-10,000 products
+
+**v1 health_wash_score renamed to health_wash_score_v1:**
+  Retained in DB as Component A baseline (UPF reality only)
+  Replaced by health_wash_score_v3 after vision merge
+
+**False positives eliminated by this change (see OBS-010 to OBS-017):**
+  Enriched flour vitamins, milk proteins, natural colorants,
+  tautological energy claims, protein-as-ingredient
+
+**References:** docs/DATA_OBSERVATIONS.md OBS-010 through OBS-019
 
 \---
 
@@ -499,6 +550,8 @@ load.py      →  database/functional\_food\_radar.db
 \*This document is updated as new decisions are made.\*  
 
 \*Last updated: 20 May 2026\*
+
+
 
 
 
