@@ -1,48 +1,47 @@
 """
 analyze.py
 ----------
-Option A — Rule-based NLP ingredient flagging and health-wash scoring.
+Option A — Rule-based NLP ingredient flagging.
+Version 2 — implements ADR-010 architectural pivot.
 
-What this script does:
-    1.  Load latest clean_*.csv automatically
-    2.  Filter to NLP-eligible rows (EN + FR + BOTH only)
-    3.  Flag ultra-processed markers in ingredients_text (EN + FR dictionary)
-    4.  Flag functional/health claims in ingredients_text and product_name
-    5.  Cross-check additives_tags for E-number markers (where available)
-    6.  Detect "negative claims" (no added sugar, no lactose, natural etc.)
-    7.  Compute a health-wash score per product (0-100)
-    8.  Classify each product into a health-wash category
-    9.  Save enriched CSV to data/sample/
+WHAT CHANGED FROM v1:
+    Component B (claim inflation) and Component C (contradiction gap)
+    are NO LONGER computed from ingredient text.
+    They will be fed by Azure Vision output in v3 (vision_extract.py).
 
-Health-wash score logic:
-    Higher score = more suspicious gap between claims and reality.
-    Built to JOIN cleanly with v3 LLM vision claim extraction on barcode.
+    The score produced here is renamed health_wash_score_v1 and measures
+    ONLY Component A: UPF reality (what the product actually contains).
+
+    Functional claims are still DETECTED and stored as columns —
+    they feed the v3 join and the half-truth detectors below.
+
+WHAT IS NEW:
+    Four half-truth detection columns (from practitioner feedback):
+    - ht_sugar_loophole:     "no added sugar" claim but high sugar content
+    - ht_protein_masks_fat:  protein claim but high calories or sat fat
+    - ht_fibre_distraction:  fibre claim on NOVA 4 with high sugar
+    - ht_vegan_calorie_trap: plant milk with fortification claim, high kcal
+
+v3 bridge:
+    health_wash_score_v1 (UPF reality) + vision claims (Azure)
+    => health_wash_score_v3 (final gap metric) via merge_scores.py
 
 Usage:
     python pipeline/analyze.py
 
 Input:
     data/sample/clean_<timestamp>.csv   (latest file auto-detected)
+    OR data/sample/bulk_clean_<timestamp>.csv
 
-Output:FUNCTIONAL_CLAIM_MARKERS
+Output:
     data/sample/analyzed_<timestamp>.csv
-
-Architecture note (v2 stub):
-    cluster_label column is passed through unchanged from clean.py.
-    K-Means clustering (Option B) will populate it in v2.
-    See docs/ADR.md.
-
-Architecture note (v3 bridge):
-    health_wash_score and claim_flags columns are designed to JOIN
-    with v3 LLM vision output on barcode field.
-    The gap between front-of-pack claims (v3) and reality (this script)
-    is the core health-washing metric. See docs/ADR.md.
 """
 
 import pandas as pd
 import os
 import re
 from datetime import datetime
+from collections import Counter
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -51,320 +50,246 @@ SAMPLE_DIR = os.path.join(ROOT, "data", "sample")
 
 
 # ── Ultra-processed ingredient markers ───────────────────────────────────────
-# Bilingual EN/FR dictionary.
-# Each entry is a tuple: (keyword, label, severity)
-# severity: 1 = minor additive, 2 = significant additive, 3 = strong UPF marker
-#
-# Sources:
-#   - NOVA group 4 classification criteria (Monteiro et al. 2019)
-#   - IARC classification for individual additives
-#   - OFF additives database
-#   - Emmi case study (OBS-009 in DATA_OBSERVATIONS.md)
+# These feed Component A only — UPF REALITY.
+# Do NOT add claim language here. Claims come from Azure Vision in v3.
+# See ADR-010.
 
 ULTRA_PROCESSED_MARKERS = [
-
-    # ── Sweeteners (artificial) ───────────────────────────────────────────────
-    # EN/FR names + E-numbers (caught via ingredients_text or additives_tags)
-    ("aspartame",           "artificial_sweetener", 3),
-    ("acesulfame",          "artificial_sweetener", 3),
-    ("acésulfame",          "artificial_sweetener", 3),
-    ("saccharin",           "artificial_sweetener", 3),
-    ("saccharine",          "artificial_sweetener", 3),
-    ("sucralose",           "artificial_sweetener", 3),
-    ("cyclamate",           "artificial_sweetener", 3),
-    ("cyclamat",            "artificial_sweetener", 3),  # FR
-    ("stevia",              "sweetener_natural",    1),
-    ("steviol",             "sweetener_natural",    1),
-    ("maltitol",            "polyol_sweetener",     2),
-    ("sorbitol",            "polyol_sweetener",     2),
-    ("xylitol",             "polyol_sweetener",     2),
-    ("erythritol",          "polyol_sweetener",     1),
-    ("vanilline",           "artificial_flavour",   2),  # FR: artificial vanillin
-
-    # ── Emulsifiers ───────────────────────────────────────────────────────────
-    ("lecithin",            "emulsifier",           1),
-    ("lecithine",           "emulsifier",           1),   # FR
-    ("lécithine",           "emulsifier",           1),   # FR accented
-    ("mono- and diglycerides", "emulsifier",        2),
-    ("monoglycérides",      "emulsifier",           2),   # FR
-    ("diglycérides",        "emulsifier",           2),   # FR
-    ("carrageenan",         "emulsifier_concern",   3),   # IARC 2B
-    ("carraghénane",        "emulsifier_concern",   3),   # FR
-    ("carraghénanes",       "emulsifier_concern",   3),   # FR plural
-    ("xanthan",             "thickener",            2),
-    ("xanthane",            "thickener",            2),   # FR
-    ("guar",                "thickener",            1),
-    ("carboxymethyl",       "thickener",            2),
-    ("cellulose",           "thickener",            1),
-    ("pectin",              "thickener",            1),
-    ("pectine",             "thickener",            1),   # FR
-
-    # ── Preservatives ─────────────────────────────────────────────────────────
-    ("sodium benzoate",     "preservative",         2),
-    ("benzoate de sodium",  "preservative",         2),   # FR
-    ("potassium sorbate",   "preservative",         2),
-    ("sorbate de potassium","preservative",         2),   # FR
-    ("sodium nitrite",      "preservative",         3),
-    ("nitrite de sodium",   "preservative",         3),   # FR
-    ("sodium nitrate",      "preservative",         3),
-    ("nitrate de sodium",   "preservative",         3),   # FR
-    ("bha",                 "preservative",         3),
-    ("bht",                 "preservative",         3),
-    ("tbhq",                "preservative",         3),
-
-    # ── Flavourings (generic) ─────────────────────────────────────────────────
-    # "natural flavour" is a UPF indicator — real food doesn't need added flavour
-    ("artificial flavour",  "artificial_flavour",   3),
-    ("artificial flavor",   "artificial_flavour",   3),
-    ("natural flavour",     "added_flavour",        2),
-    ("natural flavor",      "added_flavour",        2),
-    ("arôme naturel",       "added_flavour",        2),   # FR
-    ("arôme artificiel",    "artificial_flavour",   3),   # FR
-    ("arôme",               "added_flavour",        1),   # FR generic
-    ("arome",               "added_flavour",        1),   # FR without accent
-    ("flavouring",          "added_flavour",        1),
-    ("flavoring",           "added_flavour",        1),
-
-    # ── Glucose syrups and refined sugars ─────────────────────────────────────
-    ("glucose syrup",       "glucose_syrup",        3),
-    ("sirop de glucose",    "glucose_syrup",        3),   # FR
-    ("high fructose",       "glucose_syrup",        3),
-    ("corn syrup",          "glucose_syrup",        3),
-    ("dextrose",            "refined_sugar",        2),
-    ("maltodextrin",        "maltodextrin",         3),
-    ("maltodextrine",       "maltodextrin",         3),   # FR
-
-    # ── Refined starches ──────────────────────────────────────────────────────
-    ("modified starch",     "modified_starch",      2),
-    ("amidon modifié",      "modified_starch",      2),   # FR
-    ("amidon",              "starch",               1),   # FR generic starch
-    ("starch",              "starch",               1),
-
-    # ── Industrial fats ───────────────────────────────────────────────────────
-    ("palm oil",            "palm_oil",             2),
-    ("huile de palme",      "palm_oil",             2),   # FR
-    ("partially hydrogenated", "trans_fat",         3),
-    ("interesterified",     "industrial_fat",       2),
-    ("fractionated",        "industrial_fat",       1),
-
-    # ── Raising agents (processed bread/bakery indicator) ─────────────────────
-    ("sodium carbonate",    "raising_agent",        1),
-    ("carbonate de sodium", "raising_agent",        1),   # FR
-    ("ammonium carbonate",  "raising_agent",        1),
-    ("carbonate d'ammonium","raising_agent",        1),   # FR
-    ("sodium bicarbonate",  "raising_agent",        1),
-    ("bicarbonate de sodium","raising_agent",       1),   # FR
-
-    # ── Colours ───────────────────────────────────────────────────────────────
-    ("caramel colour",      "artificial_colour",    2),
-    ("caramel color",       "artificial_colour",    2),
-    ("colorant",            "colour",               1),   # FR
-    ("tartrazine",          "artificial_colour",    3),
-    ("sunset yellow",       "artificial_colour",    3),
-    ("brilliant blue",      "artificial_colour",    3),
-    ("allura red",          "artificial_colour",    3),
-
-    # ── Acid regulators ───────────────────────────────────────────────────────
-    ("phosphoric acid",     "acid_regulator",       2),
-    ("acide phosphorique",  "acid_regulator",       2),   # FR
-    ("citric acid",         "acid_regulator",       1),
-    ("acide citrique",      "acid_regulator",       1),   # FR
+    # Artificial sweeteners
+    ("aspartame",              "artificial_sweetener", 3),
+    ("acesulfame",             "artificial_sweetener", 3),
+    ("saccharin",              "artificial_sweetener", 3),
+    ("sucralose",              "artificial_sweetener", 3),
+    ("cyclamate",              "artificial_sweetener", 3),
+    ("stevia",                 "sweetener_natural",    1),
+    ("steviol",                "sweetener_natural",    1),
+    ("maltitol",               "polyol_sweetener",     2),
+    ("sorbitol",               "polyol_sweetener",     2),
+    ("xylitol",                "polyol_sweetener",     2),
+    ("erythritol",             "polyol_sweetener",     1),
+    # Emulsifiers
+    ("lecithin",               "emulsifier",           1),
+    ("lecithine",              "emulsifier",           1),
+    ("mono- and diglycerides", "emulsifier",           2),
+    ("monoglycerides",         "emulsifier",           2),
+    ("diglycerides",           "emulsifier",           2),
+    ("carrageenan",            "emulsifier_concern",   3),
+    ("carraghenane",           "emulsifier_concern",   3),
+    ("xanthan",                "thickener",            2),
+    ("xanthane",               "thickener",            2),
+    ("guar",                   "thickener",            1),
+    ("carboxymethyl",          "thickener",            2),
+    ("pectin",                 "thickener",            1),
+    ("pectine",                "thickener",            1),
+    # Preservatives
+    ("sodium benzoate",        "preservative",         2),
+    ("benzoate de sodium",     "preservative",         2),
+    ("potassium sorbate",      "preservative",         2),
+    ("sorbate de potassium",   "preservative",         2),
+    ("sodium nitrite",         "preservative",         3),
+    ("nitrite de sodium",      "preservative",         3),
+    ("bha",                    "preservative",         3),
+    ("bht",                    "preservative",         3),
+    ("tbhq",                   "preservative",         3),
+    # Flavourings
+    ("artificial flavour",     "artificial_flavour",   3),
+    ("artificial flavor",      "artificial_flavour",   3),
+    ("natural flavour",        "added_flavour",        2),
+    ("natural flavor",         "added_flavour",        2),
+    ("arome naturel",          "added_flavour",        2),
+    ("arome artificiel",       "artificial_flavour",   3),
+    ("arome",                  "added_flavour",        1),
+    ("flavouring",             "added_flavour",        1),
+    ("flavoring",              "added_flavour",        1),
+    # Glucose syrups and refined sugars
+    ("glucose syrup",          "glucose_syrup",        3),
+    ("sirop de glucose",       "glucose_syrup",        3),
+    ("high fructose",          "glucose_syrup",        3),
+    ("corn syrup",             "glucose_syrup",        3),
+    ("dextrose",               "refined_sugar",        2),
+    ("maltodextrin",           "maltodextrin",         3),
+    ("maltodextrine",          "maltodextrin",         3),
+    # Refined starches
+    ("modified starch",        "modified_starch",      2),
+    ("amidon modifie",         "modified_starch",      2),
+    ("amidon",                 "starch",               1),
+    ("starch",                 "starch",               1),
+    # Industrial fats
+    ("palm oil",               "palm_oil",             2),
+    ("huile de palme",         "palm_oil",             2),
+    ("partially hydrogenated", "trans_fat",            3),
+    ("interesterified",        "industrial_fat",       2),
+    # Raising agents
+    ("sodium carbonate",       "raising_agent",        1),
+    ("carbonate de sodium",    "raising_agent",        1),
+    ("ammonium carbonate",     "raising_agent",        1),
+    ("sodium bicarbonate",     "raising_agent",        1),
+    ("bicarbonate de sodium",  "raising_agent",        1),
+    # Colours
+    ("caramel colour",         "artificial_colour",    2),
+    ("caramel color",          "artificial_colour",    2),
+    ("tartrazine",             "artificial_colour",    3),
+    ("sunset yellow",          "artificial_colour",    3),
+    ("brilliant blue",         "artificial_colour",    3),
+    ("allura red",             "artificial_colour",    3),
+    ("colorant",               "colour",               1),
+    # Acid regulators
+    ("phosphoric acid",        "acid_regulator",       2),
+    ("acide phosphorique",     "acid_regulator",       2),
+    ("citric acid",            "acid_regulator",       1),
+    ("acide citrique",         "acid_regulator",       1),
 ]
 
 # ── E-number markers ──────────────────────────────────────────────────────────
-# Checked against additives_tags field (pipe-separated OFF pre-parsed list).
-# These are the most significant E-numbers for health-washing detection.
-# Format: (e_number_substring, label, severity)
 
 E_NUMBER_MARKERS = [
-    ("e950",  "artificial_sweetener", 3),   # Acesulfame-K
-    ("e951",  "artificial_sweetener", 3),   # Aspartame
-    ("e952",  "artificial_sweetener", 3),   # Cyclamate (banned in US/Canada)
-    ("e954",  "artificial_sweetener", 3),   # Saccharin
-    ("e955",  "artificial_sweetener", 3),   # Sucralose
-    ("e960",  "sweetener_natural",    1),   # Steviol glycosides
-    ("e407",  "emulsifier_concern",   3),   # Carrageenan (IARC 2B)
-    ("e322",  "emulsifier",           1),   # Lecithin
-    ("e471",  "emulsifier",           2),   # Mono/diglycerides
-    ("e415",  "thickener",            2),   # Xanthan gum
-    ("e412",  "thickener",            1),   # Guar gum
-    ("e150d", "artificial_colour",    2),   # Caramel colour IV (sulfite process)
-    ("e250",  "preservative",         3),   # Sodium nitrite
-    ("e251",  "preservative",         3),   # Sodium nitrate
-    ("e211",  "preservative",         2),   # Sodium benzoate
-    ("e202",  "preservative",         2),   # Potassium sorbate
-    ("e338",  "acid_regulator",       2),   # Phosphoric acid
-    ("e330",  "acid_regulator",       1),   # Citric acid
-    ("e621",  "flavour_enhancer",     2),   # MSG
-    ("e160b", "colour",               1),   # Annatto (natural but allergenic)
+    ("e950",  "artificial_sweetener", 3),
+    ("e951",  "artificial_sweetener", 3),
+    ("e952",  "artificial_sweetener", 3),
+    ("e954",  "artificial_sweetener", 3),
+    ("e955",  "artificial_sweetener", 3),
+    ("e960",  "sweetener_natural",    1),
+    ("e407",  "emulsifier_concern",   3),
+    ("e322",  "emulsifier",           1),
+    ("e471",  "emulsifier",           2),
+    ("e415",  "thickener",            2),
+    ("e412",  "thickener",            1),
+    ("e150d", "artificial_colour",    2),
+    ("e250",  "preservative",         3),
+    ("e251",  "preservative",         3),
+    ("e211",  "preservative",         2),
+    ("e202",  "preservative",         2),
+    ("e338",  "acid_regulator",       2),
+    ("e330",  "acid_regulator",       1),
+    ("e621",  "flavour_enhancer",     2),
 ]
 
-# ── Functional / health claim markers ─────────────────────────────────────────
-# These appear in ingredients_text, product_name, or labels field.
-# Presence of these = product is making a functional claim.
-# Used to compute the CLAIM side of the health-wash gap (v1 proxy).
-# v3 LLM vision will replace/supplement this with front-of-pack extraction.
-#
-# Format: (keyword, claim_category)
+# ── Functional claim markers ──────────────────────────────────────────────────
+# DETECTED AND STORED but NOT used in scoring (ADR-010).
+# Purpose: v3 join key, half-truth detection, Power BI filtering.
+# Claims on front-of-pack will be extracted by Azure Vision in v3.
 
 FUNCTIONAL_CLAIM_MARKERS = [
-
-    # ── Protein claims ────────────────────────────────────────────────────────
-    ("whey protein",        "protein_claim"),
-    ("whey protein isolate","protein_claim"),
-    ("protéines de lactosérum", "protein_claim"),  # FR: whey protein specific
-    ("casein",              "protein_claim"),
-    ("high-protein",        "protein_claim"),
-    ("protein bar",         "protein_claim"),
-    ("protein shake",       "protein_claim"),
-    ("protein powder",      "protein_claim"),
-    ("whey protein",        "protein_claim"),
-    ("pea protein",         "protein_claim"),
-    ("soy protein isolate", "protein_claim"),
-    ("plant protein",       "protein_claim"),
-    ("added protein",       "protein_claim"),
-    ("riche en protéines",  "protein_claim"),   # FR
-    ("protéines ajoutées",  "protein_claim"),   # FR: added proteins
-    ("source de protéines", "protein_claim"),   # FR: source of protein
-    # Removed bare "protein" / "protéine" — too generic,
-    # matches structural ingredients like "modified milk proteins"
-
-    # ── Probiotic / gut health ────────────────────────────────────────────────
-    ("probiotic",           "probiotic_claim"),
-    ("probiotique",         "probiotic_claim"),  # FR
-    ("lactobacillus",       "probiotic_claim"),
-    ("bifidobacterium",     "probiotic_claim"),
-    ("bifidus",             "probiotic_claim"),
-    ("bacteria",            "probiotic_claim"),  # generic bacteria mention
-    ("live cultures",       "probiotic_claim"),
-    ("ferments lactiques",  "probiotic_claim"),  # FR
-
-    # ── Prebiotic / fibre ────────────────────────────────────────────────────
-    ("prebiotic",           "prebiotic_claim"),
-    ("prébiotique",         "prebiotic_claim"),  # FR
-    ("inulin",              "prebiotic_claim"),
-    ("inuline",             "prebiotic_claim"),  # FR
-    ("chicory root",        "prebiotic_claim"),
-    ("inulin de chicorée",  "prebiotic_claim"),  # FR — specific prebiotic form
-    ("extrait de chicorée", "prebiotic_claim"),  # FR — extract form
-    ("fructooligosaccharides", "prebiotic_claim"),
-    ("fos",                 "prebiotic_claim"),
-    ("source de fibres",    "fibre_claim"),      # FR regulated claim
-    ("source of fibre",     "fibre_claim"),       # EN
-    ("source of fiber",     "fibre_claim"),       # EN US
-    ("riche en fibres",     "fibre_claim"),       # FR: high in fibre
-    ("high in fibre",       "fibre_claim"),       # EN
-    ("germe de blé",        "fortification_claim"), # FR: wheat germ — Gerblé signature
-    ("wheat germ",          "fortification_claim"), # EN
-
-    # ── Vitamins and minerals (fortification claims) ──────────────────────────
-    ("vitamin",             "fortification_claim"),
-    ("vitamine",            "fortification_claim"),  # FR
-    ("calcium",             "fortification_claim"),
-    ("magnesium",           "fortification_claim"),
-    ("magnésium",           "fortification_claim"),  # FR
-    ("zinc",                "fortification_claim"),
-    ("omega-3",             "fortification_claim"),  # require specificity
-    ("omega 3",             "fortification_claim"),
-    ("collagen",            "fortification_claim"),
-    ("collagène",           "fortification_claim"),  # FR
-    # Removed: "iron" / "fer" — too generic, matches enriched flour
-    # Removed: bare "omega" — too generic
-
-    # ── Adaptogens / superfoods ────────────────────────────────────────────────
-    ("ashwagandha",         "adaptogen_claim"),
-    ("maca",                "adaptogen_claim"),
-    ("turmeric extract",    "adaptogen_claim"),
-    ("curcumin extract",    "adaptogen_claim"),
-    ("curcuminoid",         "adaptogen_claim"),
-    ("extrait de curcuma",  "adaptogen_claim"),  # FR — extract specifically
-    ("ginseng",             "adaptogen_claim"),
-    ("matcha",              "adaptogen_claim"),
-    ("spirulina",           "adaptogen_claim"),
-    ("spiruline",           "adaptogen_claim"),  # FR
-    ("chlorella",           "adaptogen_claim"),
-    ("acai",                "adaptogen_claim"),
-    ("açaí",                "adaptogen_claim"),
-    ("goji",                "adaptogen_claim"),
-    ("moringa",             "adaptogen_claim"),
-    ("baobab",              "adaptogen_claim"),
-
-    # ── Keto / low carb ───────────────────────────────────────────────────────
-    ("keto",                "keto_claim"),
-    ("ketogenic",           "keto_claim"),
-    ("cétogène",            "keto_claim"),  # FR
-    ("low carb",            "keto_claim"),
-    ("low-carb",            "keto_claim"),
-
-    # ── Energy / performance ──────────────────────────────────────────────────
-    ("caffeine",            "energy_claim"),
-    ("caféine",             "energy_claim"),  # FR
-    ("guarana",             "energy_claim"),
-    ("taurine",             "energy_claim"),
-    ("creatine",            "energy_claim"),
-    ("créatine",            "energy_claim"),  # FR
-    ("bcaa",                "energy_claim"),
-    ("electrolyte",         "energy_claim"),
-    ("électrolyte",         "energy_claim"),  # FR
+    # Protein — require explicit claim context, not bare ingredient
+    ("high protein",          "protein_claim"),
+    ("high-protein",          "protein_claim"),
+    ("protein bar",           "protein_claim"),
+    ("protein shake",         "protein_claim"),
+    ("protein powder",        "protein_claim"),
+    ("whey protein",          "protein_claim"),
+    ("pea protein",           "protein_claim"),
+    ("soy protein isolate",   "protein_claim"),
+    ("plant protein",         "protein_claim"),
+    ("added protein",         "protein_claim"),
+    ("riche en proteines",    "protein_claim"),
+    ("proteines ajoutees",    "protein_claim"),
+    ("source de proteines",   "protein_claim"),
+    ("proteinangereichert",   "protein_claim"),   # DE v1.5
+    ("proteinquelle",         "protein_claim"),   # DE v1.5
+    # Probiotic
+    ("probiotic",             "probiotic_claim"),
+    ("probiotique",           "probiotic_claim"),
+    ("lactobacillus",         "probiotic_claim"),
+    ("bifidobacterium",       "probiotic_claim"),
+    ("bifidus",               "probiotic_claim"),
+    ("live cultures",         "probiotic_claim"),
+    ("ferments lactiques",    "probiotic_claim"),
+    # Prebiotic / fibre
+    ("prebiotic",             "prebiotic_claim"),
+    ("prebiotique",           "prebiotic_claim"),
+    ("inulin de chicoree",    "prebiotic_claim"),
+    ("extrait de chicoree",   "prebiotic_claim"),
+    ("chicory root",          "prebiotic_claim"),
+    ("source de fibres",      "fibre_claim"),
+    ("source of fibre",       "fibre_claim"),
+    ("source of fiber",       "fibre_claim"),
+    ("riche en fibres",       "fibre_claim"),
+    ("high in fibre",         "fibre_claim"),
+    ("ballaststoffquelle",    "fibre_claim"),      # DE v1.5
+    # Vitamins / fortification
+    ("vitamin",               "fortification_claim"),
+    ("vitamine",              "fortification_claim"),
+    ("calcium",               "fortification_claim"),
+    ("magnesium",             "fortification_claim"),
+    ("zinc",                  "fortification_claim"),
+    ("omega-3",               "fortification_claim"),
+    ("omega 3",               "fortification_claim"),
+    ("collagen",              "fortification_claim"),
+    ("collagene",             "fortification_claim"),
+    ("germe de ble",          "fortification_claim"),
+    ("wheat germ",            "fortification_claim"),
+    # Adaptogens — require extract context (not bare colorant ingredient)
+    ("ashwagandha",           "adaptogen_claim"),
+    ("maca",                  "adaptogen_claim"),
+    ("turmeric extract",      "adaptogen_claim"),
+    ("curcumin extract",      "adaptogen_claim"),
+    ("extrait de curcuma",    "adaptogen_claim"),
+    ("ginseng",               "adaptogen_claim"),
+    ("matcha",                "adaptogen_claim"),
+    ("spirulina",             "adaptogen_claim"),
+    ("spiruline",             "adaptogen_claim"),
+    ("chlorella",             "adaptogen_claim"),
+    ("moringa",               "adaptogen_claim"),
+    # Keto
+    ("keto",                  "keto_claim"),
+    ("ketogenic",             "keto_claim"),
+    ("low carb",              "keto_claim"),
+    ("low-carb",              "keto_claim"),
+    # Energy — stored but excluded from scoring (ADR-010, OBS-017)
+    ("caffeine",              "energy_claim"),
+    ("cafeine",               "energy_claim"),
+    ("guarana",               "energy_claim"),
+    ("taurine",               "energy_claim"),
+    ("creatine",              "energy_claim"),
+    ("electrolyte",           "energy_claim"),
 ]
 
 # ── Negative claim markers ────────────────────────────────────────────────────
-# "No X" claims on packaging — technically true but often misleading.
-# Detected in product_name and labels field.
-# These are the FRONT-OF-PACK claim proxies for v1.
-# v3 LLM vision will give the full picture.
 
 NEGATIVE_CLAIM_MARKERS = [
-    # EN
-    ("no added sugar",      "no_added_sugar"),
-    ("no sugar added",      "no_added_sugar"),
-    ("sugar free",          "no_added_sugar"),
-    ("sugar-free",          "no_added_sugar"),
-    ("no lactose",          "no_lactose"),
-    ("lactose free",        "no_lactose"),
-    ("lactose-free",        "no_lactose"),
-    ("no gluten",           "no_gluten"),
-    ("gluten free",         "no_gluten"),
-    ("gluten-free",         "no_gluten"),
-    ("no preservatives",    "no_preservatives"),
-    ("preservative free",   "no_preservatives"),
-    ("no artificial",       "no_artificial"),
-    ("all natural",         "natural_claim"),
-    ("100% natural",        "natural_claim"),
-    ("clean label",         "clean_label"),
-    ("no palm oil",         "no_palm_oil"),
-    ("palm oil free",       "no_palm_oil"),
-    ("non gmo",             "non_gmo"),
-    ("non-gmo",             "non_gmo"),
-    # FR
-    ("sans sucre ajouté",   "no_added_sugar"),
-    ("sans sucres ajoutés", "no_added_sugar"),
-    ("sans sucre",          "no_added_sugar"),
-    ("sans lactose",        "no_lactose"),
-    ("sans gluten",         "no_gluten"),
-    ("sans conservateur",   "no_preservatives"),
-    ("sans conservateurs",  "no_preservatives"),
-    ("sans additif",        "no_additives"),
-    ("sans additifs",       "no_additives"),
-    ("sans colorant",       "no_artificial"),
-    ("sans arôme artificiel", "no_artificial"),
-    ("naturel",             "natural_claim"),
-    ("100% naturel",        "natural_claim"),
-    ("sans huile de palme", "no_palm_oil"),
-    ("moins de sucre",      "reduced_sugar"),   # "less sugar" — softer claim
-    ("réduit en sucres",    "reduced_sugar"),
-    ("aucun colorant",      "no_artificial"),    # FR: no colourant
-    ("sans colorants",      "no_artificial"),    # FR plural
+    ("no added sugar",        "no_added_sugar"),
+    ("no sugar added",        "no_added_sugar"),
+    ("sugar free",            "no_added_sugar"),
+    ("sugar-free",            "no_added_sugar"),
+    ("no lactose",            "no_lactose"),
+    ("lactose free",          "no_lactose"),
+    ("lactose-free",          "no_lactose"),
+    ("no gluten",             "no_gluten"),
+    ("gluten free",           "no_gluten"),
+    ("gluten-free",           "no_gluten"),
+    ("no preservatives",      "no_preservatives"),
+    ("no artificial",         "no_artificial"),
+    ("all natural",           "natural_claim"),
+    ("100% natural",          "natural_claim"),
+    ("clean label",           "clean_label"),
+    ("no palm oil",           "no_palm_oil"),
+    ("palm oil free",         "no_palm_oil"),
+    ("non gmo",               "non_gmo"),
+    ("non-gmo",               "non_gmo"),
+    ("sans sucre ajoute",     "no_added_sugar"),
+    ("sans sucres ajoutes",   "no_added_sugar"),
+    ("sans sucre",            "no_added_sugar"),
+    ("sans lactose",          "no_lactose"),
+    ("sans gluten",           "no_gluten"),
+    ("sans conservateur",     "no_preservatives"),
+    ("sans additif",          "no_additives"),
+    ("sans colorant",         "no_artificial"),
+    ("naturel",               "natural_claim"),
+    ("100% naturel",          "natural_claim"),
+    ("sans huile de palme",   "no_palm_oil"),
+    ("moins de sucre",        "reduced_sugar"),
+    ("reduit en sucres",      "reduced_sugar"),
+    ("ohne zuckerzusatz",     "no_added_sugar"),   # DE v1.5
 ]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def find_latest_clean(sample_dir):
-    """Auto-detect the most recently created clean_*.csv file."""
     files = [
         f for f in os.listdir(sample_dir)
-        if f.startswith("clean_") and f.endswith(".csv")
+        if (f.startswith("clean_") or f.startswith("bulk_clean_"))
+        and f.endswith(".csv")
     ]
     if not files:
         raise FileNotFoundError(
@@ -375,29 +300,17 @@ def find_latest_clean(sample_dir):
 
 
 def flag_text(text, markers):
-    """
-    Scan text (lowercased) against a list of (keyword, label, ...) markers.
-    Returns list of (keyword_found, label) tuples.
-    Uses word-boundary aware matching to avoid false positives
-    (e.g. 'iron' should not match 'environment').
-    """
+    """Scan lowercased text against markers. Returns list of matching tuples."""
     if not isinstance(text, str) or text.strip() == "":
         return []
-
     text_lower = text.lower()
     found = []
     seen_labels = set()
-
     for marker in markers:
         keyword = marker[0]
         label   = marker[1]
-
-        # Skip if we already found this label (avoid double-counting)
         if label in seen_labels:
             continue
-
-        # Use word-boundary matching for short keywords (< 5 chars)
-        # to avoid false positives like 'fer' matching 'differently'
         if len(keyword) < 5:
             pattern = r'\b' + re.escape(keyword) + r'\b'
             if re.search(pattern, text_lower):
@@ -407,354 +320,343 @@ def flag_text(text, markers):
             if keyword in text_lower:
                 found.append(marker)
                 seen_labels.add(label)
-
     return found
 
 
 def flag_additives(additives_str, e_markers):
-    """
-    Scan pipe-separated additives_tags string against E-number markers.
-    Returns list of (e_number, label, severity) tuples.
-    """
+    """Scan pipe-separated additives_tags against E-number markers."""
     if not isinstance(additives_str, str) or additives_str.strip() == "":
         return []
-
     additives_lower = additives_str.lower()
     found = []
     seen_labels = set()
-
     for e_num, label, severity in e_markers:
         if label in seen_labels:
             continue
         if e_num in additives_lower:
             found.append((e_num, label, severity))
             seen_labels.add(label)
-
     return found
 
-def flag_functional_text(text):
+
+def strip_parenthetical_enrichment(text):
     """
     Strip parenthetical sub-lists before checking functional claims.
-    Prevents enriched flour (niacin, riboflavin, folic acid...) from
+    Prevents 'enriched flour (niacin, riboflavin, folic acid...)' from
     triggering fortification_claim on mandatory US flour enrichment.
-    See DATA_OBSERVATIONS OBS-019.
+    Also strips colorant context phrases (OBS-019).
+    See ADR-010 and DATA_OBSERVATIONS OBS-019.
     """
     if not isinstance(text, str):
         return text
-    import re
-    return re.sub(r'\([^)]*\)', ' ', text)
+    cleaned = re.sub(r'\([^)]*\)', ' ', text)
+    color_phrases = [
+        r'pour la couleur[\w\s]*',
+        r'a pouvoir colorant[\w\s]*',
+        r'colorant\s*:[\w\s]*',
+        r'farbgebendes lebensmittel[\w\s]*',
+        r'farbstoff\s*:[\w\s]*',
+    ]
+    for cp in color_phrases:
+        cleaned = re.sub(cp, ' ', cleaned.lower())
+    return cleaned
 
-def compute_health_wash_score(upf_flags, claim_flags, neg_claim_flags,
-                               nova_group, nutriscore, protein_100g):
+
+# ── Scoring ───────────────────────────────────────────────────────────────────
+
+def compute_health_wash_score_v1(upf_flags):
     """
-    Compute a health-wash score 0-100 for a single product.
+    Component A only: UPF reality (0-40 points).
+    Severity-weighted count of ultra-processed markers in ingredient text.
 
-    Logic:
-        The score measures the GAP between what a product signals
-        (functional claims, negative claims) and what it actually is
-        (UPF markers, NOVA group, Nutriscore).
-
-        High score = strong health claims + strong UPF reality = health-washing
-        Low score  = no claims OR claims backed by good nutritional profile
-
-    Components:
-        A. UPF reality penalty (0-40 pts)
-           Severity-weighted count of ultra-processed markers found.
-
-        B. Claim inflation bonus (0-30 pts)
-           Number and type of functional/negative claims made.
-           More claims = higher potential for washing.
-
-        C. NOVA/Nutriscore contradiction (0-30 pts)
-           Claim present AND NOVA 3/4 = contradiction = high score.
-           Claim present AND Nutriscore D/E = contradiction = high score.
-
-    Note: this is a v1 PROXY score.
-    v3 LLM vision will replace component B with actual front-of-pack
-    claim extraction. The JOIN is on barcode field.
-    See docs/ADR.md.
+    Components B and C (claim inflation + contradiction gap) will be
+    added in merge_scores.py after Azure Vision extraction.
+    See ADR-010.
     """
-    score = 0
-
-    # ── Component A: UPF reality (0-40 pts) ─────────────────────────────────
-    if upf_flags:
-        severity_total = sum(f[2] for f in upf_flags)
-        # Cap at 40 — more than enough signals above that
-        score += min(severity_total * 3, 40)
-
-    # ── Component B: Claim inflation (0-30 pts) ──────────────────────────────
-    # Exclude pure energy_claim from inflation score
-    # Energy drinks claiming energy is tautological, not health-washing
-    non_energy_claims = [f for f in claim_flags
-                         if f[1] != "energy_claim"]
-    total_claims = len(non_energy_claims) + len(neg_claim_flags)
-    score += min(total_claims * 5, 30)
-
-    # ── Component C: NOVA / Nutriscore contradiction (0-30 pts) ─────────────
-    has_claims = total_claims > 0
-
-    if has_claims:
-        # NOVA contradiction
-        try:
-            nova = float(nova_group) if nova_group else None
-        except (ValueError, TypeError):
-            nova = None
-
-        # Only apply NOVA contradiction if there are non-energy claims
-        has_non_energy_claims = any(
-            f[1] != "energy_claim" for f in claim_flags
-        )
-        if nova in (3.0, 4.0) and has_non_energy_claims:
-            score += 15 if nova == 3.0 else 20
-
-        # Nutriscore contradiction
-        ns = str(nutriscore).upper().strip() if nutriscore else ""
-        if ns in ("D", "E"):
-            score += 10
-
-        # Special case: protein claim with low actual protein
-        has_protein_claim = any(
-            f[1] == "protein_claim" for f in claim_flags
-        )
-        try:
-            prot = float(protein_100g) if protein_100g else None
-        except (ValueError, TypeError):
-            prot = None
-
-        if has_protein_claim and prot is not None and prot < 10:
-            score += 10  # protein claim with < 10g/100g is suspicious
-
-    return min(score, 100)
+    if not upf_flags:
+        return 0
+    severity_total = sum(f[2] for f in upf_flags)
+    return min(severity_total * 3, 40)
 
 
-def classify_health_wash(score):
-    """
-    Map numeric score to a human-readable category.
-    Categories designed to be Power BI filter-friendly.
-    """
-    if score >= 70:
-        return "HIGH — strong health-washing signals"
-    elif score >= 45:
-        return "MEDIUM — some health-washing signals"
+def classify_health_wash_v1(score):
+    if score >= 30:
+        return "HIGH UPF — strong ultra-processed markers"
     elif score >= 20:
-        return "LOW — minor signals"
+        return "MEDIUM UPF — significant ultra-processed markers"
+    elif score >= 10:
+        return "LOW UPF — some ultra-processed markers"
     else:
-        return "CLEAN — no significant signals"
+        return "CLEAN — minimal ultra-processed markers"
+
+
+# ── Half-truth detectors ──────────────────────────────────────────────────────
+
+def detect_sugar_loophole(row):
+    """
+    HT-1: Natural sugar loophole.
+    'No added sugar' claim but product has high actual sugar content.
+    Examples: Innocent, Nakd, Emmi Energy Milk, fruit concentrates.
+    """
+    neg = str(row.get("negative_claims_found", "") or "")
+    has_claim = "no_added_sugar" in neg or "reduced_sugar" in neg
+    try:
+        sugars = float(row.get("sugars_100g"))
+    except (TypeError, ValueError):
+        sugars = None
+    return bool(has_claim and sugars is not None and sugars > 8)
+
+
+def detect_protein_masks_fat(row):
+    """
+    HT-2: Protein claim masking high calories or saturated fat.
+    Examples: Chiefs High Protein Puddings, Nature Valley Protein bars.
+    """
+    func = str(row.get("functional_claims_found", "") or "")
+    if "protein_claim" not in func:
+        return False
+    try:
+        kcal    = float(row.get("energy_kcal"))
+        sat_fat = float(row.get("saturated_fat_100g"))
+    except (TypeError, ValueError):
+        kcal = None
+        sat_fat = None
+    if kcal is not None and kcal > 400:
+        return True
+    if sat_fat is not None and sat_fat > 5:
+        return True
+    return False
+
+
+def detect_fibre_distraction(row):
+    """
+    HT-3: Fibre/whole grain claim distracting from NOVA 4 + high sugar.
+    Examples: Belvita, Kellogg's Special K, Kellogg's All-Bran.
+    """
+    func = str(row.get("functional_claims_found", "") or "")
+    if "fibre_claim" not in func and "prebiotic_claim" not in func:
+        return False
+    try:
+        nova   = float(row.get("nova_group"))
+        sugars = float(row.get("sugars_100g"))
+    except (TypeError, ValueError):
+        nova = None
+        sugars = None
+    return bool(nova == 4.0 and sugars is not None and sugars > 15)
+
+
+def detect_vegan_calorie_trap(row):
+    """
+    HT-4: Plant milk with fortification claims but calorie-dense.
+    Threshold: >60 kcal/100ml (whole dairy milk benchmark).
+    Examples: Oatly, some Alpro products.
+    """
+    func = str(row.get("functional_claims_found", "") or "")
+    if "fortification_claim" not in func:
+        return False
+    off_cats = str(row.get("off_categories", "") or "").lower()
+    is_plant_milk = any(kw in off_cats for kw in [
+        "plant-based", "oat-milk", "almond-milk", "soy-milk",
+        "coconut-milk", "rice-milk", "hafer", "mandel", "avoine",
+        "amande", "soja", "oat drink", "almond drink",
+    ])
+    if not is_plant_milk:
+        return False
+    try:
+        kcal = float(row.get("energy_kcal"))
+    except (TypeError, ValueError):
+        kcal = None
+    return bool(kcal is not None and kcal > 60)
 
 
 # ── Main analysis pipeline ────────────────────────────────────────────────────
 
 def analyze(input_path):
     print(f"\n  Input file: {os.path.basename(input_path)}")
-    df = pd.read_csv(input_path, encoding="utf-8-sig")
-    print(f"  Rows on load: {len(df)}")
+    df = pd.read_csv(input_path, encoding="utf-8-sig", low_memory=False,
+                     dtype={"barcode": str})
+    print(f"  Rows on load: {len(df):,}")
 
-    # ── Step 1: Filter to NLP-eligible rows ──────────────────────────────────
-    eligible = df[df["nlp_eligible"] == True].copy()
+    eligible   = df[df["nlp_eligible"] == True].copy()
     ineligible = df[df["nlp_eligible"] != True].copy()
-    print(f"\n  Step 1  - NLP eligible: {len(eligible)} rows")
-    print(f"            NLP excluded: {len(ineligible)} rows "
-          f"(OTHER/UNKNOWN — retained in output with null scores)")
+    print(f"\n  Step 1  - NLP eligible: {len(eligible):,} rows")
+    print(f"            NLP excluded: {len(ineligible):,} rows")
 
-    # ── Step 2: Flag ultra-processed markers ─────────────────────────────────
-    print(f"\n  Step 2  - Flagging ultra-processed markers...")
-
+    # Step 2: UPF markers — Component A
+    print(f"\n  Step 2  - Flagging UPF markers (Component A)...")
     eligible["_upf_flags"] = eligible["ingredients_text"].apply(
         lambda x: flag_text(x, ULTRA_PROCESSED_MARKERS)
     )
-    eligible["upf_marker_count"] = eligible["_upf_flags"].apply(len)
-    eligible["upf_markers_found"] = eligible["_upf_flags"].apply(
-        lambda flags: "|".join(f[1] for f in flags) if flags else ""
+    eligible["upf_marker_count"]    = eligible["_upf_flags"].apply(len)
+    eligible["upf_markers_found"]   = eligible["_upf_flags"].apply(
+        lambda f: "|".join(x[1] for x in f) if f else ""
     )
-    eligible["upf_max_severity"] = eligible["_upf_flags"].apply(
-        lambda flags: max((f[2] for f in flags), default=0)
+    eligible["upf_max_severity"]    = eligible["_upf_flags"].apply(
+        lambda f: max((x[2] for x in f), default=0)
     )
     eligible["has_ultra_processed"] = eligible["upf_marker_count"] > 0
+    n = eligible["has_ultra_processed"].sum()
+    print(f"            {n:,} of {len(eligible):,} ({n/len(eligible)*100:.0f}%) have UPF markers")
 
-    upf_count = eligible["has_ultra_processed"].sum()
-    print(f"            {upf_count} of {len(eligible)} products "
-          f"({upf_count/len(eligible)*100:.0f}%) have UPF markers")
-
-    # ── Step 3: Cross-check E-numbers from additives_tags ────────────────────
-    print(f"\n  Step 3  - Cross-checking E-numbers from additives_tags...")
-
+    # Step 3: E-numbers
+    print(f"\n  Step 3  - Cross-checking E-numbers...")
     eligible["_e_flags"] = eligible["additives_tags"].apply(
         lambda x: flag_additives(x, E_NUMBER_MARKERS)
     )
-    eligible["e_number_count"] = eligible["_e_flags"].apply(len)
+    eligible["e_number_count"]  = eligible["_e_flags"].apply(len)
     eligible["e_numbers_found"] = eligible["_e_flags"].apply(
-        lambda flags: "|".join(f[0] for f in flags) if flags else ""
+        lambda f: "|".join(x[0] for x in f) if f else ""
     )
-    # Flag artificial sweeteners specifically (high-value signal)
-    eligible["has_artificial_sweetener"] = eligible["_e_flags"].apply(
-        lambda flags: any(f[1] == "artificial_sweetener" for f in flags)
-    )
-    # Also check ingredients_text for sweetener names (catches nulls in additives_tags)
-    sweetener_keywords = [m for m in ULTRA_PROCESSED_MARKERS
-                          if m[1] == "artificial_sweetener"]
+    sw_kw = [m for m in ULTRA_PROCESSED_MARKERS if m[1] == "artificial_sweetener"]
     eligible["has_artificial_sweetener"] = eligible.apply(
-        lambda row: row["has_artificial_sweetener"] or bool(
-            flag_text(row["ingredients_text"], sweetener_keywords)
+        lambda row: (
+            any(f[1] == "artificial_sweetener" for f in row["_e_flags"]) or
+            bool(flag_text(row["ingredients_text"], sw_kw))
         ), axis=1
     )
+    e_n  = (eligible["e_number_count"] > 0).sum()
+    sw_n = eligible["has_artificial_sweetener"].sum()
+    print(f"            {e_n:,} products have flagged E-numbers")
+    print(f"            {sw_n:,} products contain artificial sweeteners")
 
-    e_count = (eligible["e_number_count"] > 0).sum()
-    sweet_count = eligible["has_artificial_sweetener"].sum()
-    print(f"            {e_count} products have flagged E-numbers")
-    print(f"            {sweet_count} products contain artificial sweeteners")
-
-    # ── Step 4: Flag functional claims ───────────────────────────────────────
-    print(f"\n  Step 4  - Flagging functional claims...")
-
-    # Search in both ingredients_text AND product_name
+    # Step 4: Functional claims — stored for v3, NOT scored
+    print(f"\n  Step 4  - Detecting functional claims (stored for v3, NOT scored)...")
     eligible["_claim_flags"] = eligible.apply(
         lambda row: flag_text(
-            flag_functional_text(str(row["ingredients_text"])) + " " + str(row["product_name"]),
+            strip_parenthetical_enrichment(str(row["ingredients_text"])) +
+            " " + str(row["product_name"]),
             FUNCTIONAL_CLAIM_MARKERS
         ), axis=1
     )
-    eligible["functional_claim_count"] = eligible["_claim_flags"].apply(len)
+    eligible["functional_claim_count"]  = eligible["_claim_flags"].apply(len)
     eligible["functional_claims_found"] = eligible["_claim_flags"].apply(
-        lambda flags: "|".join(f[1] for f in flags) if flags else ""
+        lambda f: "|".join(x[1] for x in f) if f else ""
     )
-
-    claim_count = (eligible["functional_claim_count"] > 0).sum()
-    print(f"            {claim_count} products have functional claim markers")
-
-    # Top claims breakdown
+    claim_n = (eligible["functional_claim_count"] > 0).sum()
+    print(f"            {claim_n:,} products have detectable claim language")
     all_claims = []
-    for flags in eligible["_claim_flags"]:
-        all_claims.extend(f[1] for f in flags)
+    for f in eligible["_claim_flags"]:
+        all_claims.extend(x[1] for x in f)
     if all_claims:
-        from collections import Counter
-        top_claims = Counter(all_claims).most_common(8)
         print(f"            Top claim categories:")
-        for claim, count in top_claims:
-            print(f"              {claim:<30} {count} products")
+        for claim, count in Counter(all_claims).most_common(8):
+            print(f"              {claim:<30} {count:,}")
 
-    # ── Step 5: Flag negative claims ─────────────────────────────────────────
-    print(f"\n  Step 5  - Flagging negative claims (no sugar, natural, etc.)...")
-
-    # Search in product_name + labels field
-    eligible["_neg_claim_flags"] = eligible.apply(
+    # Step 5: Negative claims — stored for v3
+    print(f"\n  Step 5  - Detecting negative claims (stored for v3)...")
+    eligible["_neg_flags"] = eligible.apply(
         lambda row: flag_text(
-            str(row["product_name"]) + " " + str(row["labels"]),
+            str(row["product_name"]) + " " + str(row.get("labels", "")),
             NEGATIVE_CLAIM_MARKERS
         ), axis=1
     )
-    eligible["negative_claim_count"] = eligible["_neg_claim_flags"].apply(len)
-    eligible["negative_claims_found"] = eligible["_neg_claim_flags"].apply(
-        lambda flags: "|".join(f[1] for f in flags) if flags else ""
+    eligible["negative_claim_count"]  = eligible["_neg_flags"].apply(len)
+    eligible["negative_claims_found"] = eligible["_neg_flags"].apply(
+        lambda f: "|".join(x[1] for x in f) if f else ""
     )
+    neg_n = (eligible["negative_claim_count"] > 0).sum()
+    print(f"            {neg_n:,} products have negative claim language")
 
-    neg_count = (eligible["negative_claim_count"] > 0).sum()
-    print(f"            {neg_count} products have negative claim markers")
-
-    # ── Step 6: Compute health-wash score ────────────────────────────────────
-    print(f"\n  Step 6  - Computing health-wash scores...")
-
-    eligible["health_wash_score"] = eligible.apply(
-        lambda row: compute_health_wash_score(
-            upf_flags    = row["_upf_flags"],
-            claim_flags  = row["_claim_flags"],
-            neg_claim_flags = row["_neg_claim_flags"],
-            nova_group   = row.get("nova_group"),
-            nutriscore   = row.get("nutriscore_grade"),
-            protein_100g = row.get("protein_100g"),
-        ), axis=1
+    # Step 6: health_wash_score_v1 — Component A only
+    print(f"\n  Step 6  - Computing health_wash_score_v1 (UPF reality, Component A only)...")
+    eligible["health_wash_score_v1"]    = eligible["_upf_flags"].apply(
+        compute_health_wash_score_v1
     )
-    eligible["health_wash_category"] = eligible["health_wash_score"].apply(
-        classify_health_wash
+    eligible["health_wash_category_v1"] = eligible["health_wash_score_v1"].apply(
+        classify_health_wash_v1
     )
+    # v3 placeholders — populated by merge_scores.py
+    eligible["health_wash_score_v3"]    = None
+    eligible["health_wash_category_v3"] = None
+    eligible["v3_claims_found"]         = None
 
-    score_dist = eligible["health_wash_category"].value_counts()
-    print(f"            Score distribution:")
-    for cat, count in score_dist.items():
-        print(f"              {cat:<40} {count}")
+    dist = eligible["health_wash_category_v1"].value_counts()
+    print(f"            Distribution:")
+    for cat, n in dist.items():
+        print(f"              {cat:<45} {n:,}")
 
-    # ── Step 7: Drop internal flag columns, keep clean output ────────────────
-    drop_cols = ["_upf_flags", "_claim_flags", "_neg_claim_flags", "_e_flags"]
-    eligible = eligible.drop(columns=[c for c in drop_cols if c in eligible.columns])
+    # Step 7: Half-truth detection
+    print(f"\n  Step 7  - Half-truth pattern detection...")
+    eligible["ht_sugar_loophole"]     = eligible.apply(detect_sugar_loophole,    axis=1)
+    eligible["ht_protein_masks_fat"]  = eligible.apply(detect_protein_masks_fat, axis=1)
+    eligible["ht_fibre_distraction"]  = eligible.apply(detect_fibre_distraction, axis=1)
+    eligible["ht_vegan_calorie_trap"] = eligible.apply(detect_vegan_calorie_trap, axis=1)
+    print(f"            HT-1 sugar loophole:       {eligible['ht_sugar_loophole'].sum():,}")
+    print(f"            HT-2 protein masks fat:    {eligible['ht_protein_masks_fat'].sum():,}")
+    print(f"            HT-3 fibre distraction:    {eligible['ht_fibre_distraction'].sum():,}")
+    print(f"            HT-4 vegan calorie trap:   {eligible['ht_vegan_calorie_trap'].sum():,}")
 
-    # ── Step 8: Reattach ineligible rows (nulls for NLP columns) ─────────────
-    nlp_output_cols = [
+    # Step 8: Clean up, reattach ineligible rows
+    drop_cols = ["_upf_flags", "_e_flags", "_claim_flags", "_neg_flags"]
+    eligible  = eligible.drop(columns=[c for c in drop_cols if c in eligible.columns])
+    nlp_cols  = [
         "upf_marker_count", "upf_markers_found", "upf_max_severity",
         "has_ultra_processed", "e_number_count", "e_numbers_found",
         "has_artificial_sweetener", "functional_claim_count",
         "functional_claims_found", "negative_claim_count",
-        "negative_claims_found", "health_wash_score", "health_wash_category"
+        "negative_claims_found", "health_wash_score_v1",
+        "health_wash_category_v1", "health_wash_score_v3",
+        "health_wash_category_v3", "v3_claims_found",
+        "ht_sugar_loophole", "ht_protein_masks_fat",
+        "ht_fibre_distraction", "ht_vegan_calorie_trap",
     ]
-    for col in nlp_output_cols:
+    for col in nlp_cols:
         if col not in ineligible.columns:
             ineligible[col] = None
 
     df_out = pd.concat([eligible, ineligible], ignore_index=True)
     df_out = df_out.sort_values("barcode").reset_index(drop=True)
-
     return df_out
 
 
-# ── Run ───────────────────────────────────────────────────────────────────────
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    print(f"\nFunctional Food Radar — analyze.py")
+    print(f"\nFunctional Food Radar - analyze.py v2 (ADR-010)")
     print(f"Run timestamp: {timestamp}")
+    print(f"Architecture:  Component A (UPF reality) only")
+    print(f"               Components B+C fed by Azure Vision in v3\n")
 
     input_path = find_latest_clean(SAMPLE_DIR)
     df = analyze(input_path)
 
-    # ── Summary ───────────────────────────────────────────────────────────────
     eligible = df[df["nlp_eligible"] == True].copy()
-    eligible["health_wash_score"] = pd.to_numeric(
-        eligible["health_wash_score"], errors="coerce"
+    eligible["health_wash_score_v1"] = pd.to_numeric(
+        eligible["health_wash_score_v1"], errors="coerce"
     )
 
     print(f"\n  -- Summary --------------------------------------------------")
-    print(f"  Total rows:     {len(df)}")
-    print(f"  NLP analyzed:   {len(eligible)}")
+    print(f"  Total rows:   {len(df):,}")
+    print(f"  NLP analyzed: {len(eligible):,}")
 
-    print(f"\n  Top 10 most health-washed products:")
-    top = eligible.nlargest(10, "health_wash_score")[
-        ["product_name", "brands", "health_wash_score",
-         "health_wash_category", "nova_group", "nutriscore_grade",
-         "upf_markers_found", "functional_claims_found"]
+    print(f"\n  Top 10 products by UPF reality score (v1):")
+    top = eligible.nlargest(10, "health_wash_score_v1")[
+        ["product_name", "brands", "health_wash_score_v1", "upf_markers_found"]
     ]
-    pd.set_option("display.max_colwidth", 30)
+    pd.set_option("display.max_colwidth", 35)
     print("  " + top.to_string().replace("\n", "\n  "))
 
-    print(f"\n  Products with artificial sweeteners + health claims:")
-    paradox = eligible[
-        eligible["has_artificial_sweetener"] &
-        (eligible["functional_claim_count"] > 0)
-    ][["product_name", "brands", "has_artificial_sweetener",
-       "functional_claims_found", "health_wash_score"]]
-    if len(paradox):
-        print("  " + paradox.to_string().replace("\n", "\n  "))
-    else:
-        print("  None found in this sample")
+    print(f"\n  Half-truth patterns:")
+    for col, label in [
+        ("ht_sugar_loophole",    "HT-1 sugar loophole"),
+        ("ht_protein_masks_fat", "HT-2 protein masks fat"),
+        ("ht_fibre_distraction", "HT-3 fibre distraction"),
+        ("ht_vegan_calorie_trap","HT-4 vegan calorie trap"),
+    ]:
+        subset = eligible[eligible[col] == True]
+        if len(subset):
+            top3 = subset["primary_brand"].value_counts().head(3)
+            print(f"    {label}: {len(subset):,} | top: {dict(top3)}")
+        else:
+            print(f"    {label}: 0 products")
 
-    print(f"\n  NOVA 4 products with functional claims (core health-wash pattern):")
-    core = eligible[
-        (eligible["nova_group"] == 4.0) &
-        (eligible["functional_claim_count"] > 0)
-    ][["product_name", "brands", "nova_group",
-       "nutriscore_grade", "functional_claims_found",
-       "health_wash_score"]]
-    if len(core):
-        print("  " + core.to_string().replace("\n", "\n  "))
-    else:
-        print("  None found in this sample")
-
-    # ── Save ──────────────────────────────────────────────────────────────────
-    output_filename = f"analyzed_{timestamp}.csv"
-    output_path     = os.path.join(SAMPLE_DIR, output_filename)
+    output_path = os.path.join(SAMPLE_DIR, f"analyzed_{timestamp}.csv")
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
-    print(f"\n  Saved -> {output_filename}")
-    print(f"  ({len(df)} rows, {len(df.columns)} columns)\n")
-
-    print(f"  v3 bridge: output joins to LLM vision results on 'barcode' field")
-    print(f"  health_wash_score and functional_claims_found are the JOIN keys\n")
+    print(f"\n  Saved -> analyzed_{timestamp}.csv")
+    print(f"  ({len(df):,} rows, {len(df.columns)} columns)")
+    print(f"\n  v3 bridge: joins on 'barcode'")
+    print(f"  Pending: health_wash_score_v3 (merge_scores.py after Azure)\n")
 
 
 if __name__ == "__main__":
