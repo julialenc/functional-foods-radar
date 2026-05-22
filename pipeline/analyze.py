@@ -214,12 +214,20 @@ FUNCTIONAL_CLAIM_MARKERS = [
     ("whey protein isolate","protein_claim"),
     ("protéines de lactosérum", "protein_claim"),  # FR: whey protein specific
     ("casein",              "protein_claim"),
-    ("protein",             "protein_claim"),
-    ("protéine",            "protein_claim"),   # FR
-    ("proteines",           "protein_claim"),   # FR plural without accent
-    ("high protein",        "protein_claim"),
     ("high-protein",        "protein_claim"),
-    ("riche en protéines",  "protein_claim"),   # FR: rich in protein
+    ("protein bar",         "protein_claim"),
+    ("protein shake",       "protein_claim"),
+    ("protein powder",      "protein_claim"),
+    ("whey protein",        "protein_claim"),
+    ("pea protein",         "protein_claim"),
+    ("soy protein isolate", "protein_claim"),
+    ("plant protein",       "protein_claim"),
+    ("added protein",       "protein_claim"),
+    ("riche en protéines",  "protein_claim"),   # FR
+    ("protéines ajoutées",  "protein_claim"),   # FR: added proteins
+    ("source de protéines", "protein_claim"),   # FR: source of protein
+    # Removed bare "protein" / "protéine" — too generic,
+    # matches structural ingredients like "modified milk proteins"
 
     # ── Probiotic / gut health ────────────────────────────────────────────────
     ("probiotic",           "probiotic_claim"),
@@ -255,18 +263,20 @@ FUNCTIONAL_CLAIM_MARKERS = [
     ("calcium",             "fortification_claim"),
     ("magnesium",           "fortification_claim"),
     ("magnésium",           "fortification_claim"),  # FR
-    ("iron",                "fortification_claim"),
-    ("fer",                 "fortification_claim"),  # FR: iron
     ("zinc",                "fortification_claim"),
-    ("omega",               "fortification_claim"),
+    ("omega-3",             "fortification_claim"),  # require specificity
+    ("omega 3",             "fortification_claim"),
     ("collagen",            "fortification_claim"),
     ("collagène",           "fortification_claim"),  # FR
+    # Removed: "iron" / "fer" — too generic, matches enriched flour
+    # Removed: bare "omega" — too generic
 
     # ── Adaptogens / superfoods ────────────────────────────────────────────────
     ("ashwagandha",         "adaptogen_claim"),
     ("maca",                "adaptogen_claim"),
     ("turmeric extract",    "adaptogen_claim"),
-    ("curcumin",            "adaptogen_claim"),
+    ("curcumin extract",    "adaptogen_claim"),
+    ("curcuminoid",         "adaptogen_claim"),
     ("extrait de curcuma",  "adaptogen_claim"),  # FR — extract specifically
     ("ginseng",             "adaptogen_claim"),
     ("matcha",              "adaptogen_claim"),
@@ -422,6 +432,17 @@ def flag_additives(additives_str, e_markers):
 
     return found
 
+def flag_functional_text(text):
+    """
+    Strip parenthetical sub-lists before checking functional claims.
+    Prevents enriched flour (niacin, riboflavin, folic acid...) from
+    triggering fortification_claim on mandatory US flour enrichment.
+    See DATA_OBSERVATIONS OBS-019.
+    """
+    if not isinstance(text, str):
+        return text
+    import re
+    return re.sub(r'\([^)]*\)', ' ', text)
 
 def compute_health_wash_score(upf_flags, claim_flags, neg_claim_flags,
                                nova_group, nutriscore, protein_100g):
@@ -588,7 +609,7 @@ def analyze(input_path):
     # Search in both ingredients_text AND product_name
     eligible["_claim_flags"] = eligible.apply(
         lambda row: flag_text(
-            str(row["ingredients_text"]) + " " + str(row["product_name"]),
+            flag_functional_text(str(row["ingredients_text"])) + " " + str(row["product_name"]),
             FUNCTIONAL_CLAIM_MARKERS
         ), axis=1
     )

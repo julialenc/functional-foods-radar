@@ -228,3 +228,8 @@ data/sample/*.csv
 # Log files — generated at runtime, not committed
 logs/*.txt
 logs/*.log
+
+# Large data files — generated locally, not committed
+data/raw/off_full_export.csv.gz
+data/raw/*.gz
+database/*.db
