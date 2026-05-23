@@ -436,7 +436,7 @@ def main():
             )
 
         # Small delay to be polite to Azure
-        time.sleep(65)  # RPM 1 limit on gpt-4.1-nano
+        time.sleep(1.5)  # RPM 50 — 1.2s minimum + small buffer
 
     # Final save
     results_df = pd.DataFrame(results)
