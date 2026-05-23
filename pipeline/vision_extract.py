@@ -41,7 +41,7 @@ Environment variables required:
     AZURE_OPENAI_KEY       key from Azure OpenAI portal
     AZURE_OPENAI_DEPLOYMENT  e.g. gpt-4o-mini
     ANTHROPIC_KEY     = os.getenv("ANTHROPIC_API_KEY", "")
-    ANTHROPIC_MODEL   = "claude-haiku-4-5-20251001"
+    ANTHROPIC_MODEL   = "claude-haiku-4-5"
 
     OR set them in a .env file in the project root.
 
@@ -57,11 +57,11 @@ import sys
 import json
 import time
 import argparse
-import anthropic
 import requests
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
+import anthropic
 
 # ── Load .env if present ──────────────────────────────────────────────────────
 try:
@@ -81,6 +81,8 @@ OPENAI_ENDPOINT   = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
 OPENAI_KEY        = os.getenv("AZURE_OPENAI_KEY", "")
 OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
 COST_ALERT_CHF    = float(os.getenv("AZURE_COST_ALERT_CHF", "80"))
+ANTHROPIC_KEY     = os.getenv("ANTHROPIC_API_KEY", "")
+ANTHROPIC_MODEL   = "claude-haiku-4-5-20251001"
 
 # Cost per 1000 operations (CHF estimates)
 OCR_COST_PER_1K   = 1.50
@@ -115,6 +117,10 @@ Return ONLY valid JSON with this exact structure:
   "glp1_positioning": true/false,
   "other_claims": [] or list of any other health/wellness claims not captured above,
   "no_claims_detected": true/false,
+  "origin_quality_claim": true/false,
+  "clean_label_claim": true/false,
+  "minimal_ingredients_claim": true/false,
+  "artisan_claim": true/false,
   "ocr_quality": "good"/"partial"/"poor"
 }
 
@@ -122,6 +128,9 @@ Rules:
 - Set no_claims_detected=true if you find NO health/wellness claims at all
 - Set ocr_quality=poor if the text is mostly garbled or unreadable
 - Do NOT infer claims — only extract what is explicitly stated
+- Capture origin/artisan claims: "hand-roasted", "single origin", "100% natural", "artisan"
+- Capture clean label claims: "only X ingredients", "nothing artificial", "simple ingredients"
+- Capture comparative nutrition claims: "-X% sugar vs reference", "lighter than"
 - Return ONLY the JSON object, no explanation, no markdown fences"""
 
 
@@ -198,42 +207,58 @@ def ocr_image(image_url: str, max_retries: int = 3) -> tuple[str, str]:
     return "", "max_retries"
 
 
-# ── GPT-4o-mini claim extraction ──────────────────────────────────────────────
+# ── GPT-4.1-mini claim extraction ──────────────────────────────────────────────
 
 def extract_claims(ocr_text: str, product_name: str = "") -> tuple[dict, str]:
     """
-    Send OCR text to Claude Haiku for structured claim extraction.
-    Returns (claims_dict, status).
+    Send OCR text to Azure OpenAI for structured claim extraction.
+    Using gpt-4.1-mini at RPM 2 — adds 35s delay between calls.
     """
-    if not ANTHROPIC_KEY:
+    if not OPENAI_ENDPOINT or not OPENAI_KEY:
         return {}, "no_credentials"
 
     if not ocr_text or len(ocr_text.strip()) < 10:
         return {"no_claims_detected": True, "ocr_quality": "poor"}, "skipped_empty"
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+    url = f"{OPENAI_ENDPOINT}/openai/v1/chat/completions"
+
+    headers = {
+        "api-key": OPENAI_KEY,
+        "Content-Type": "application/json",
+    }
 
     user_message = f"Product: {product_name}\n\nFront-of-pack text:\n{ocr_text[:2000]}"
 
+    body = {
+        "model": OPENAI_DEPLOYMENT,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": user_message},
+        ],
+        "temperature": 0,
+        "max_tokens": 500,
+    }
+
+    
     try:
-        message = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=500,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}]
-        )
-        content = message.content[0].text.strip()
-        # Strip markdown fences if present
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        claims = json.loads(content)
-        return claims, "success"
+        resp = requests.post(url, headers=headers, json=body, timeout=60)
+        if resp.status_code == 200:
+            content = resp.json()["choices"][0]["message"]["content"].strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            claims = json.loads(content)
+            return claims, "success"
+        elif resp.status_code == 429:
+            time.sleep(35)
+            return extract_claims(ocr_text, product_name)
+        else:
+            return {}, f"http_{resp.status_code}_{resp.text[:50]}"
     except json.JSONDecodeError:
         return {}, "json_parse_error"
     except Exception as e:
-        return {}, f"error_{str(e)[:30]}"
+        return {}, f"error_{str(e)[:50]}"
 
 
 # ── Cost tracker ──────────────────────────────────────────────────────────────
@@ -388,7 +413,8 @@ def main():
                 "reformulation_claim", "comparative_claim",
                 "glp1_positioning", "no_claims_detected", "ocr_quality",
                 "protein_amount_g", "sugar_reduction_pct",
-                "comparative_reference",
+                "comparative_reference", "origin_quality_claim", "clean_label_claim",
+                "minimal_ingredients_claim", "artisan_claim",
             ]:
                 result[f"v3_{key}"] = claims.get(key)
             result["v3_fortification_nutrients"] = "|".join(
@@ -410,7 +436,7 @@ def main():
             )
 
         # Small delay to be polite to Azure
-        time.sleep(0.5)
+        time.sleep(65)  # RPM 1 limit on gpt-4.1-nano
 
     # Final save
     results_df = pd.DataFrame(results)
