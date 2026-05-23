@@ -7,13 +7,13 @@ Three-tier sampling strategy (from practitioner feedback + ADR-010):
 
 TIER 1 — Named priority brands (sampled regardless of score)
     Brands where health-washing hypothesis is known a priori.
-    5 products per brand, maximally score-diverse selection.
+    15 products per brand, maximally score-diverse selection.
     These are the analytically most interesting brands.
 
 TIER 2 — NOVA 4 + Nutriscore D/E + functional claims
     Products where the data signals contradiction.
     Structurally suspicious: bad nutrition + health claim language detected.
-    4 products per brand, brands with >= 5 products.
+    8 products per brand, brands with >= 5 products.
 
 TIER 3 — High UPF reality score brands
     Brands where v1 NLP flags heavy ultra-processing.
@@ -54,46 +54,39 @@ SAMPLE_DIR = os.path.join(ROOT, "data", "sample")
 # Based on practitioner input: known health-washing suspects.
 
 TIER1_BRANDS = [
-    # Swiss / European premium brands — the half-truth heartland
-    "emmi",
-    "chiefs",
-    # Innocent / natural positioning brands
-    "innocent",
-    "nakd",
-    # Plant milk brands
-    "alpro",
-    "oatly",
-    # Breakfast / snack brands with heavy fortification claims
-    "belvita",
-    "gerble",
-    "nature valley",
-    # Cereal brands
-    "kellogg's",
-    "special k",
-    # Probiotic drink brands
-    "actimel",
-    "danone",
-    # High-protein positioning
-    "hipro",
-    "fairlife",
-    # Energy / functional drinks
-    "monster energy",
-    "red bull",
+    # Swiss / European premium — half-truth heartland
+    "emmi", "chiefs",
+    # Natural/fruit positioning
+    "innocent", "nakd",
+    # Plant milk
+    "alpro", "oatly",
+    # Breakfast / snack fortification
+    "belvita", "gerble", "nature valley",
+    # Cereal
+    "kellogg's", "special k",
+    # Probiotic drinks
+    "actimel", "danone",
+    # High-protein
+    "hipro", "fairlife",
+    # Confectionery with protein claims
+    "mars", "snickers", "bounty", "twix",
+    # Conglomerates
+    "nestle",
 ]
 
 # ── Tier 2: NOVA 4 + D/E + functional claims ─────────────────────────────────
 TIER2_NOVA      = 4.0
 TIER2_NUTRISCORE = ("D", "E")
 TIER2_MIN_N     = 5
-TIER2_SAMPLE_N  = 4
+TIER2_SAMPLE_N  = 8    # was 6
 
 # ── Tier 3: High UPF score brands ────────────────────────────────────────────
 TIER3_MIN_AVG_SCORE = 20
 TIER3_MIN_N         = 10
-TIER3_SAMPLE_N      = 3
+TIER3_SAMPLE_N      = 5  # was 3
 
 # ── Per-brand sample size ─────────────────────────────────────────────────────
-TIER1_SAMPLE_N = 5
+TIER1_SAMPLE_N = 15  # was 5
 
 
 def get_conn():
@@ -179,7 +172,7 @@ def sample_tier2(df, already_sampled_barcodes):
     brand_counts = pool["primary_brand"].value_counts()
     eligible_brands = brand_counts[brand_counts >= TIER2_MIN_N].index
 
-    for brand in eligible_brands[:50]:  # cap at 50 brands
+    for brand in eligible_brands[:500]:  # was 200
         group = pool[pool["primary_brand"] == brand]
         sampled = sample_diverse(group, TIER2_SAMPLE_N)
         sampled = sampled.copy()
@@ -214,7 +207,7 @@ def sample_tier3(df, already_sampled_barcodes):
     print(f"    {len(eligible)} brands with avg_score >= {TIER3_MIN_AVG_SCORE}, n >= {TIER3_MIN_N}")
 
     results = []
-    for _, row in eligible.head(50).iterrows():
+    for _, row in eligible.head(150).iterrows():  # was 50
         brand = row["primary_brand"]
         group = pool[pool["primary_brand"] == brand]
         sampled = sample_diverse(group, TIER3_SAMPLE_N)
@@ -227,6 +220,26 @@ def sample_tier3(df, already_sampled_barcodes):
     print(f"    {len(tier3_df)} products sampled from {min(len(eligible), 50)} brands")
     return tier3_df
 
+def sample_tier4_halftruth(df, already_sampled_barcodes):
+    """Tier 4: dedicated half-truth pattern quota sampling."""
+    print(f"\n  TIER 4 — Half-truth quota sampling")
+    results = []
+    patterns = [
+        ("ht_sugar_loophole",    "HT-1 sugar loophole",    100),
+        ("ht_fibre_distraction", "HT-3 fibre distraction", 100),
+    ]
+    for col, label, target in patterns:
+        pool = df[
+            (df[col] == True) &
+            (~df["barcode"].isin(already_sampled_barcodes))
+        ].copy()
+        sampled = pool.sample(min(target, len(pool)), random_state=42)
+        sampled = sampled.copy()
+        sampled["tier"] = 4
+        sampled["sampling_reason"] = f"tier4_{col}"
+        results.append(sampled)
+        print(f"    {label}: {len(pool):,} available → {len(sampled)} sampled")
+    return pd.concat(results, ignore_index=True) if results else pd.DataFrame()
 
 def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -253,10 +266,14 @@ def main():
     tier2_barcodes = set(tier2["barcode"].tolist()) if len(tier2) else set()
 
     tier3 = sample_tier3(df, tier1_barcodes | tier2_barcodes)
+    tier3_barcodes = set(tier3["barcode"].tolist()) if len(tier3) else set()
+
+    tier4 = sample_tier4_halftruth(df, tier1_barcodes | tier2_barcodes | tier3_barcodes)
+    tier4_barcodes = set(tier4["barcode"].tolist()) if len(tier4) else set()
 
     # Combine
     all_tiers = []
-    for t in [tier1, tier2, tier3]:
+    for t in [tier1, tier2, tier3, tier4]:
         if len(t):
             all_tiers.append(t)
 
