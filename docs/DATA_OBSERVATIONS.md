@@ -1006,5 +1006,163 @@ incomplete entries like barcode-only records do not)
 
 
 
+\---
 
+
+
+\### OBS-019 — v3 vision confirms half-truth patterns at scale
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* After merging v1 NLP reality scores with v3 Azure Vision
+
+front-of-pack claim extraction across 4,714 products, four half-truth
+
+patterns are confirmed at scale:
+
+
+
+\- HT-1 Sugar loophole:      95 confirmed (claim present + sugars > 8g/100g)
+
+\- HT-2 Protein masks fat:   95 confirmed (protein claim + kcal > 400 or sat fat > 5g)
+
+\- HT-3 Fibre distraction:   82 confirmed (fibre claim + NOVA 4 + sugars > 15g)
+
+\- HT-4 Vegan calorie trap: 112 confirmed (plant milk + fortification + kcal > 60)
+
+\- Total: 384 confirmed half-truth instances
+
+
+
+\*\*Score uplift (v1 → v3):\*\*
+
+\- Mean uplift: 8.4 points across all 4,714 products
+
+\- Max uplift: 55.0 points (products with many front-of-pack claims)
+
+\- 1,302 products with uplift > 20 points — front-of-pack significantly
+
+&#x20; more aggressive than ingredient reality
+
+
+
+\*\*Implication:\*\* Front-of-pack claims add meaningful analytical signal
+
+beyond ingredient text alone. The v3 pipeline is working as designed —
+
+it captures the claim-vs-reality gap that v1 NLP cannot see.
+
+
+
+\---
+
+
+
+\### OBS-019 — v3 vision confirms half-truth patterns at scale
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* After merging v1 NLP reality scores with v3 Azure Vision
+
+front-of-pack claim extraction across 4,714 products, four half-truth
+
+patterns are confirmed at scale:
+
+
+
+\- HT-1 Sugar loophole:      95 confirmed (claim present + sugars > 8g/100g)
+
+\- HT-2 Protein masks fat:   95 confirmed (protein claim + kcal > 400 or sat fat > 5g)
+
+\- HT-3 Fibre distraction:   82 confirmed (fibre claim + NOVA 4 + sugars > 15g)
+
+\- HT-4 Vegan calorie trap: 112 confirmed (plant milk + fortification + kcal > 60)
+
+\- Total: 384 confirmed half-truth instances
+
+
+
+\*\*Score uplift (v1 → v3):\*\*
+
+\- Mean uplift: 8.4 points across all 4,714 products
+
+\- Max uplift: 55.0 points (products with many front-of-pack claims)
+
+\- 1,302 products with uplift > 20 points — front-of-pack significantly
+
+&#x20; more aggressive than ingredient reality
+
+
+
+\*\*Implication:\*\* Front-of-pack claims add meaningful analytical signal
+
+beyond ingredient text alone. The v3 pipeline is working as designed —
+
+it captures the claim-vs-reality gap that v1 NLP cannot see.
+
+
+
+\---
+
+
+
+\### OBS-020 — v3 top brands are dedicated functional brands, not mainstream
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* The top-scoring brands by avg health\_wash\_score\_v3 are
+
+specialist functional food brands (Fiber One, Special K Protein, Atkins,
+
+Muscle Milk, Pure Protein) — brands that exist specifically to make
+
+functional claims. Their high scores are analytically expected.
+
+
+
+\*\*The more important finding is mainstream brands with functional variants:\*\*
+
+Large mainstream brands (Kellogg's, Nestlé, Danone, Mars, Emmi) making
+
+functional claims on products not designed for them are the true
+
+health-washing story. These brands have the brand equity to make claims
+
+credible, the distribution to reach mass consumers, and the legal teams
+
+to keep claims technically defensible.
+
+
+
+\*\*For Power BI and final analysis:\*\*
+
+Filter by n >= 20 products per brand to surface mainstream brand patterns.
+
+This removes specialist brands with small product counts and focuses on
+
+brands with systematic portfolio-wide health-washing behaviour.
+
+
+
+\*\*Brand fragmentation note:\*\*
+
+"fiber one", "fibre one", "fibre 1" are the same brand — three separate
+
+entries due to EN/FR spelling and accent stripping. Same issue as
+
+nestlé/nestle (OBS-014). Company mapping table (v1.5) will resolve.
+
+Priority brands to unify before final analysis: Fiber One, Kellogg's
+
+variants, Nestlé sub-brands, Danone sub-brands.
+
+
+
+\*\*Recommended next analysis:\*\*
+
+Run db\_summary.py filtered to primary\_brand n >= 20 and sort by avg
+
+health\_wash\_score\_v3 to get the true mainstream brand health-washing
+
+ranking. This is the finding worth publishing.
 
