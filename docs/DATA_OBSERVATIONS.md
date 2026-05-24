@@ -1166,3 +1166,103 @@ health\_wash\_score\_v3 to get the true mainstream brand health-washing
 
 ranking. This is the finding worth publishing.
 
+
+
+\---
+
+
+
+\### OBS-021 — Oatly: brand narrative health-washing invisible to NLP and vision
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* Oatly scores v1=3.4, v3=3.4 — zero uplift across 23 products.
+
+Zero front-of-pack claims detected by Azure Vision.
+
+
+
+\*\*Why this is analytically significant:\*\*
+
+Oatly's health-washing operates entirely through brand narrative —
+
+"it's like milk but made for humans", "wow no cow", sustainability
+
+positioning, environmental messaging. None of this uses regulated claim
+
+language (no protein g/100g, no "source of X", no "-X% sugar").
+
+
+
+\*\*This creates a blind spot in our system:\*\*
+
+v1 NLP catches ingredient reality. v3 vision catches regulatory claims.
+
+Neither catches brand narrative. Oatly's products are NOVA 4, often
+
+calorie-dense (oat milk 45-60 kcal/100ml vs dairy 60 kcal), and
+
+positioned as a healthy dairy alternative — but they make no claims
+
+our system can detect.
+
+
+
+\*\*Implication for analysis:\*\*
+
+Brand narrative health-washing is a separate category requiring
+
+different detection: brand website scraping, brand identity analysis,
+
+social media claim tracking. Beyond current scope but worth noting
+
+as a known blind spot.
+
+
+
+\*\*Other brands with similar patterns:\*\*
+
+Innocent (avg v3=11.5, low claims detected) — uses fruit imagery
+
+and playful language rather than claim language. Nakd (avg v3=8.8)
+
+positions as "natural" through product name and ingredient simplicity
+
+rather than explicit claims.
+
+
+
+\*\*Recommendation:\*\*
+
+Document as a methodology limitation in README and ADR.
+
+Flag Oatly, Innocent, Nakd as "brand narrative" brands distinct from
+
+"claim language" brands in any published findings.
+
+
+
+Root cause: OCR quality poor (23/23 products) due to Oatly's large 
+
+stylized typography fragmenting into disconnected tokens in OFF thumbnails.
+
+Claims ARE present on packaging (100% Vegan, No dairy/nuts/gluten, 
+
+Organic, Climate footprint, Bio) but unreadable from available images.
+
+
+
+Correction: This is an image quality limitation, not brand narrative 
+
+health-washing. Oatly would score significantly higher with higher 
+
+resolution front-of-pack images.
+
+
+
+Methodology note: Brands with large typographic/artistic packaging 
+
+(Oatly, Innocent) are systematically underscored by our pipeline due 
+
+to OFF thumbnail quality. Flag these in published findings.
+
