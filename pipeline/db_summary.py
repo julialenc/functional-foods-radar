@@ -49,14 +49,19 @@ for claim, count in Counter(all_claims).most_common(20):
 
 print('\nCombined benefit group frequency:')
 benefit_groups = {
-    'Protein benefit':      ['protein_claim', 'protein_amount_g'],
-    'Natural / clean':      ['natural_claim', 'no_artificial', 'clean_label_claim', 'no_palm_oil'],
-    'Sugar reduction':      ['no_added_sugar', 'reduced_sugar'],
-    'Energy/performance':   ['energy_claim'],
-    'Gut health':           ['fibre_claim', 'probiotic_claim', 'prebiotic_claim'],
-    'Fortification':        ['fortification_claim'],
-    'Sustainability halo':  ['sustainability_halo', 'origin_quality_claim', 'artisan_claim'],
-    'Reformulation':        ['reformulation_claim', 'comparative_claim'],
+    'protein':      ['protein_claim', 'protein_amount_g'],
+    'natural':      ['natural_claim', 'no_artificial', 'clean_label_claim', 
+                     'no_palm_oil', 'organic_claim', 'bio'],
+    'vegan':        ['vegan_claim', 'dairy_free_claim', 'plant_based_claim'],
+    'sugar':        ['no_added_sugar', 'reduced_sugar'],
+    'energy':       ['energy_claim'],
+    'gut':          ['fibre_claim', 'probiotic_claim', 'prebiotic_claim'],
+    'fortif':       ['fortification_claim'],
+    'sustain':      ['sustainability_halo', 'origin_quality_claim', 
+                     'artisan_claim', 'heritage_claim'],
+    'reform':       ['reformulation_claim', 'comparative_claim'],
+    'glp1':         ['glp1_positioning'],
+    'free_from':    ['no_gluten', 'no_lactose'],
 }
 for group, claims in benefit_groups.items():
     mask = df['v3_claims_found'].apply(

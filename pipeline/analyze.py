@@ -242,6 +242,46 @@ FUNCTIONAL_CLAIM_MARKERS = [
     ("taurine",               "energy_claim"),
     ("creatine",              "energy_claim"),
     ("electrolyte",           "energy_claim"),
+    # German v1.5 stubs
+    ("proteinangereichert",   "protein_claim"),
+    ("proteinquelle",         "protein_claim"),
+    ("ballaststoffquelle",    "fibre_claim"),
+
+    # ── NEW: Vegan positioning ────────────────────────────────────────────────
+    ("100% vegan",            "vegan_claim"),
+    ("totally vegan",         "vegan_claim"),
+    ("vegan",                 "vegan_claim"),
+    ("vegane",                "vegan_claim"),
+    ("végan",                 "vegan_claim"),
+
+    # ── NEW: Organic / Bio ────────────────────────────────────────────────────
+    ("bio",                   "organic_claim"),
+    ("organic",               "organic_claim"),
+    ("biologisch",            "organic_claim"),
+    ("biologique",            "organic_claim"),
+    ("100% bio",              "organic_claim"),
+
+    # ── NEW: Dairy-free / plant-based ─────────────────────────────────────────
+    ("no dairy",              "dairy_free_claim"),
+    ("dairy free",            "dairy_free_claim"),
+    ("dairy-free",            "dairy_free_claim"),
+    ("no milk",               "dairy_free_claim"),
+    ("plant-based",           "plant_based_claim"),
+    ("plant based",           "plant_based_claim"),
+
+    # ── NEW: Climate / environmental ──────────────────────────────────────────
+    ("climate footprint",     "sustainability_halo"),
+    ("carbon footprint",      "sustainability_halo"),
+    ("carbon neutral",        "sustainability_halo"),
+    ("net zero",              "sustainability_halo"),
+    ("climate positive",      "sustainability_halo"),
+
+    # ── NEW: Heritage ─────────────────────────────────────────────────────────
+    ("the original",          "heritage_claim"),
+
+    # ── NEW: GLP-1 adjacent ───────────────────────────────────────────────────
+    ("low calorie",           "glp1_positioning"),
+    ("weight management",     "glp1_positioning"),
 ]
 
 # ── Negative claim markers ────────────────────────────────────────────────────

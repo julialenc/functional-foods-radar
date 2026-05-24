@@ -116,6 +116,12 @@ Return ONLY valid JSON with this exact structure:
   "comparative_reference": null or string (e.g. "average biscuits on the market"),
   "glp1_positioning": true/false,
   "other_claims": [] or list of any other health/wellness claims not captured above,
+  "vegan_claim": true/false,
+  "organic_claim": true/false,
+  "dairy_free_claim": true/false,
+  "plant_based_claim": true/false,
+  "heritage_claim": true/false,
+  "gluten_free_claim": true/false,
   "no_claims_detected": true/false,
   "origin_quality_claim": true/false,
   "clean_label_claim": true/false,
@@ -131,6 +137,9 @@ Rules:
 - Capture origin/artisan claims: "hand-roasted", "single origin", "100% natural", "artisan"
 - Capture clean label claims: "only X ingredients", "nothing artificial", "simple ingredients"
 - Capture comparative nutrition claims: "-X% sugar vs reference", "lighter than"
+- Capture vegan/plant-based: "100% vegan", "totally vegan", "plant-based", "no dairy", "dairy-free"
+- Capture organic/bio: "bio", "organic", "biologique", "biologisch", "100% bio"
+- Capture heritage: "the original", "since 19xx", "established"
 - Return ONLY the JSON object, no explanation, no markdown fences"""
 
 
@@ -414,7 +423,8 @@ def main():
                 "glp1_positioning", "no_claims_detected", "ocr_quality",
                 "protein_amount_g", "sugar_reduction_pct",
                 "comparative_reference", "origin_quality_claim", "clean_label_claim",
-                "minimal_ingredients_claim", "artisan_claim",
+                "minimal_ingredients_claim", "artisan_claim", "vegan_claim", "organic_claim", "dairy_free_claim",
+                "plant_based_claim", "heritage_claim", "gluten_free_claim",
             ]:
                 result[f"v3_{key}"] = claims.get(key)
             result["v3_fortification_nutrients"] = "|".join(
