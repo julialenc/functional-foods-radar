@@ -140,6 +140,10 @@ Rules:
 - Capture vegan/plant-based: "100% vegan", "totally vegan", "plant-based", "no dairy", "dairy-free"
 - Capture organic/bio: "bio", "organic", "biologique", "biologisch", "100% bio"
 - Capture heritage: "the original", "since 19xx", "established"
+- If OCR quality is poor due to stylized/artistic typography, still attempt 
+  to identify any readable words that indicate claims (vegan, organic, bio,
+  natural, protein, etc.) even if full sentences are not readable
+- Set ocr_quality="stylized" when large artistic typography is present
 - Return ONLY the JSON object, no explanation, no markdown fences"""
 
 
