@@ -282,6 +282,123 @@ FUNCTIONAL_CLAIM_MARKERS = [
     # ── NEW: GLP-1 adjacent ───────────────────────────────────────────────────
     ("low calorie",           "glp1_positioning"),
     ("weight management",     "glp1_positioning"),
+
+    # ── Gender targeting ──────────────────────────────────────────────────────
+    ("created for women",        "gender_targeting_claim"),
+    ("for women",                "gender_targeting_claim"),
+    ("pour les femmes",          "gender_targeting_claim"),
+
+    # ── Clean label / transparency ────────────────────────────────────────────
+    ("simply good",              "clean_label_claim"),
+    ("simply bon",               "clean_label_claim"),
+    ("ingredients you can see",  "clean_label_claim"),
+    ("see & pronounce",          "clean_label_claim"),
+    ("from real food",           "clean_label_claim"),
+
+    # ── Gerblé VITALITÉ concept ───────────────────────────────────────────────
+    ("vitalité",                 "vitalite_concept"),
+    ("vitalite",                 "vitalite_concept"),
+
+    # ── No palm oil (FR market) ───────────────────────────────────────────────
+    ("sans huile de palme",      "no_palm_oil"),
+
+    # ── Sustainability / sourcing ─────────────────────────────────────────────
+    ("engagé cacao durable",     "sustainability_halo"),
+    ("blé filière durable",      "sustainability_halo"),
+
+    # ── Energy claims ─────────────────────────────────────────────────────────
+    ("sport & énergie",          "energy_claim"),
+    ("sport et énergie",         "energy_claim"),
+    ("slow release",             "energy_claim"),
+    ("4 hours of",               "energy_claim"),
+    ("toute la matinée",         "energy_claim"),
+    ("steady energy",            "energy_claim"),
+    ("nutritious energy",        "energy_claim"),
+    ("sustained energy",         "energy_claim"),
+    ("more power",               "energy_claim"),
+    ("activgo",                  "energy_claim"),
+
+    # ── Sugar reduction (FR/ES) ───────────────────────────────────────────────
+    ("moins de sucres",          "reduced_sugar"),
+    ("allégé en sucres",         "reduced_sugar"),
+    ("menos azúcar",             "reduced_sugar"),
+
+    # ── Fortification additions ───────────────────────────────────────────────
+    ("riche en vitamines",       "fortification_claim"),
+    ("whole grain",              "fortification_claim"),
+    ("whole grains",             "fortification_claim"),
+    ("wholegrain",               "fortification_claim"),
+    ("céréales complètes",       "fortification_claim"),
+    ("heart healthy",            "fortification_claim"),
+    ("bon pour le coeur",        "fortification_claim"),
+    ("super grains",             "fortification_claim"),
+    ("ancient grains",           "fortification_claim"),
+    ("riche en omega",           "fortification_claim"),
+    ("rich in omega",            "fortification_claim"),
+    ("opti-start",               "fortification_claim"),
+    ("opti-grow",                "fortification_claim"),
+    ("opti-dej",                 "fortification_claim"),
+    ("opti-déj",                 "fortification_claim"),
+    ("hierro",                   "fortification_claim"),  # ES iron
+    ("eisen",                    "fortification_claim"),  # DE iron
+
+    # ── Immune claims ─────────────────────────────────────────────────────────
+    ("immune system",            "immune_claim"),
+    ("immune support",           "immune_claim"),
+    ("système immunitaire",      "immune_claim"),
+    ("sistema inmunitario",      "immune_claim"),
+    ("sistema imunitário",       "immune_claim"),
+    ("defensas",                 "immune_claim"),
+    ("défenses",                 "immune_claim"),
+    ("difese immunitarie",       "immune_claim"),
+
+    # ── Comparative claims ────────────────────────────────────────────────────
+    ("#1",                       "comparative_claim"),
+    ("numéro 1",                 "comparative_claim"),
+    ("n°1",                      "comparative_claim"),
+    ("nº1",                      "comparative_claim"),
+    ("no. 1",                    "comparative_claim"),
+    ("2 fois plus",              "comparative_claim"),
+    ("-40% azúcar",              "comparative_claim"),
+
+    # ── GLP-1 / weight management ─────────────────────────────────────────────
+    ("low glycemic",             "glp1_positioning"),
+    ("glycemic index",           "glp1_positioning"),
+    ("faible en matières",       "glp1_positioning"),
+    ("low fat",                  "glp1_positioning"),
+
+    # ── No artificial (US format) ─────────────────────────────────────────────
+    ("no artificial flavors",    "no_artificial"),
+    ("no artificial sweeteners", "no_artificial"),
+    ("no high fructose",         "no_artificial"),
+
+    # ── Heritage ──────────────────────────────────────────────────────────────
+    ("crafted in",               "heritage_claim"),
+    ("established",              "heritage_claim"),
+
+    # ── Minimal ingredients ───────────────────────────────────────────────────
+    ("3 zutaten",                "minimal_ingredients_claim"),
+    ("3 ingredients",            "minimal_ingredients_claim"),
+    ("3 ingrédients",            "minimal_ingredients_claim"),
+    ("nur 3",                    "minimal_ingredients_claim"),
+
+    # ── No added sugar additions ──────────────────────────────────────────────
+    ("no sugars",                "no_added_sugar"),
+    ("unsweetened",              "no_added_sugar"),
+    ("double zero",              "no_added_sugar"),
+
+    # ── No artificial additions ───────────────────────────────────────────────
+    ("zero sweeteners",          "no_artificial"),
+
+    # ── Artisan / origin ──────────────────────────────────────────────────────
+    ("freshly brewed",           "artisan_claim"),
+    ("maîtrisée",                "origin_quality_claim"),
+
+    # ── Plant-based / dairy-free additions ───────────────────────────────────
+    ("this is not milk",         "dairy_free_claim"),
+    ("pflanzlich",               "plant_based_claim"),  # DE
+    ("plantaardig",              "plant_based_claim"),  # NL
+    ("végétal",                  "plant_based_claim"),  # FR
 ]
 
 # ── Negative claim markers ────────────────────────────────────────────────────

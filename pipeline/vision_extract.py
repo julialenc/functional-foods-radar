@@ -122,12 +122,21 @@ Return ONLY valid JSON with this exact structure:
   "plant_based_claim": true/false,
   "heritage_claim": true/false,
   "gluten_free_claim": true/false,
-  "no_claims_detected": true/false,
+  "immune_claim": true/false,
+  "gender_targeting_claim": true/false,
+  "vegan_claim": true/false,
+  "organic_claim": true/false,
+  "dairy_free_claim": true/false,
+  "plant_based_claim": true/false,
+  "heritage_claim": true/false,
+  "minimal_ingredients_claim": true/false,
+  "no_palm_oil": true/false,
   "origin_quality_claim": true/false,
   "clean_label_claim": true/false,
   "minimal_ingredients_claim": true/false,
   "artisan_claim": true/false,
-  "ocr_quality": "good"/"partial"/"poor"
+  "ocr_quality": "good"/"partial"/"poor",
+  "no_claims_detected": true/false,
 }
 
 Rules:
@@ -144,7 +153,23 @@ Rules:
   to identify any readable words that indicate claims (vegan, organic, bio,
   natural, protein, etc.) even if full sentences are not readable
 - Set ocr_quality="stylized" when large artistic typography is present
-- Return ONLY the JSON object, no explanation, no markdown fences"""
+- Return ONLY the JSON object, no explanation, no markdown fences
+- "VITALITÉ", "VITALITE" = vitalite_concept (wellness positioning, common on Gerblé)
+- "SLOW RELEASE", "4 HOURS OF STEADY ENERGY", "TOUTE LA MATINÉE", "STEADY ENERGY" = energy_claim
+- "SANS HUILE DE PALME", "NO PALM OIL" = no_palm_oil
+- "MOINS DE SUCRES", "ALLÉGÉ EN SUCRES", "-X% SUCRES" = reduced_sugar; also set comparative_claim=true and sugar_reduction_pct to the number if stated
+- "ENGAGÉ CACAO DURABLE", "FILIÈRE DURABLE" = sustainability_halo
+- "SYSTÈME IMMUNITAIRE", "IMMUNE SUPPORT", "IMMUNE SYSTEM", "DEFENSAS", "DIFESE", "DÉFENSES" = immune_claim
+- "L. CASEI", "BIFIDUS", "PROBIOTIQUE", "PROBIOTISCH" = probiotic_claim
+- "OPTI-START", "OPTI-GROW", "OPTI-DÉJ" (Nestlé proprietary concepts) = fortification_claim
+- "ACTIVGO", "MORE POWER" (Emmi) = energy_claim
+- "DOUBLE ZERO", "ZERO SWEETENERS" = both no_added_sugar=true and no_artificial=true
+- "#1", "N°1", "NO. 1", "NUMÉRO 1" = comparative_claim
+- "3 INGREDIENTS", "3 ZUTATEN", "3 INGRÉDIENTS", "NUR 3" = minimal_ingredients_claim
+- "CREATED FOR WOMEN", "FOR WOMEN", "POUR LES FEMMES" = gender_targeting_claim
+- "INGREDIENTS YOU CAN SEE", "SEE & PRONOUNCE", "FROM REAL FOOD" = clean_label_claim
+- "HEART HEALTHY", "WHOLE GRAIN", "ANCIENT GRAINS", "SUPER GRAINS" = fortification_claim
+- If OCR quality is poor due to stylized/artistic typography, still attempt to identify any readable claim words even if full sentences unreadable; set ocr_quality="stylized" when large artistic typography fragments the text"""
 
 
 # ── Azure Vision OCR ──────────────────────────────────────────────────────────
@@ -428,7 +453,9 @@ def main():
                 "protein_amount_g", "sugar_reduction_pct",
                 "comparative_reference", "origin_quality_claim", "clean_label_claim",
                 "minimal_ingredients_claim", "artisan_claim", "vegan_claim", "organic_claim", "dairy_free_claim",
-                "plant_based_claim", "heritage_claim", "gluten_free_claim",
+                "plant_based_claim", "heritage_claim", "gluten_free_claim", "immune_claim", "gender_targeting_claim", "vegan_claim",
+                "organic_claim", "dairy_free_claim", "plant_based_claim",
+                "heritage_claim", "minimal_ingredients_claim", "no_palm_oil",
             ]:
                 result[f"v3_{key}"] = claims.get(key)
             result["v3_fortification_nutrients"] = "|".join(

@@ -1242,27 +1242,85 @@ Flag Oatly, Innocent, Nakd as "brand narrative" brands distinct from
 
 
 
-Root cause: OCR quality poor (23/23 products) due to Oatly's large 
+Root cause: OCR quality poor (23/23 products) due to Oatly's large
 
 stylized typography fragmenting into disconnected tokens in OFF thumbnails.
 
-Claims ARE present on packaging (100% Vegan, No dairy/nuts/gluten, 
+Claims ARE present on packaging (100% Vegan, No dairy/nuts/gluten,
 
 Organic, Climate footprint, Bio) but unreadable from available images.
 
 
 
-Correction: This is an image quality limitation, not brand narrative 
+Correction: This is an image quality limitation, not brand narrative
 
-health-washing. Oatly would score significantly higher with higher 
+health-washing. Oatly would score significantly higher with higher
 
 resolution front-of-pack images.
 
 
 
-Methodology note: Brands with large typographic/artistic packaging 
+Methodology note: Brands with large typographic/artistic packaging
 
-(Oatly, Innocent) are systematically underscored by our pipeline due 
+(Oatly, Innocent) are systematically underscored by our pipeline due
 
 to OFF thumbnail quality. Flag these in published findings.
+
+
+
+\---
+
+
+
+\### OBS-022 — Kellogg's/Special K: most systematic health-washing in sample
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* Kellogg's/Special K deploy every claim category simultaneously,
+
+with a different strategy per product tier: base cereals use fortification,
+
+premium cereals use protein, bars use protein + vitamins, children's products
+
+use no artificial. Portfolio-wide claim architecture, not accidental.
+
+\- HT-2 confirmed: Special K Protein Meal Bars show 12g protein + 5g sat fat
+
+&#x20; + 12g sugars simultaneously on front of pack
+
+\- Gender targeting: Special K "CREATED FOR WOMEN" with protein + vitamin D
+
+\- Heritage: "THE ORIGINAL" on Corn Flakes
+
+\- Comparative: "30% LESS SUGAR", "TASTIER THAN EVER"
+
+\- OCR quality: mixed (60% poor) but key claims readable
+
+
+
+\---
+
+
+
+\### OBS-023 — American vs European CPG: different claim intensity
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* American-owned brands (Kellogg's, Mondelez/Belvita, Mars)
+
+load front-of-pack maximally — badge + tick-box + circular callout +
+
+comparative % simultaneously. European-owned brands (Gerblé, Danone,
+
+Emmi) use fewer claims with more ingredient/process focus.
+
+Root cause: FDA/FTC claim culture translated to European markets by
+
+US multinationals. EFSA is stricter on unsubstantiated claims, which
+
+constrains European brands more.
+
+\- Gerblé
+
+
 

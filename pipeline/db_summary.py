@@ -62,6 +62,8 @@ benefit_groups = {
     'reform':       ['reformulation_claim', 'comparative_claim'],
     'glp1':         ['glp1_positioning'],
     'free_from':    ['no_gluten', 'no_lactose'],
+    'immune':       ['immune_claim'],
+    'gender':       ['gender_targeting_claim'],
 }
 for group, claims in benefit_groups.items():
     mask = df['v3_claims_found'].apply(
