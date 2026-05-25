@@ -524,7 +524,7 @@ with tab2:
 
     st.dataframe(
         brand_stats,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
     )
 
@@ -542,7 +542,7 @@ with tab2:
             avg_v3=("Avg v3", "mean"),
             total_products=("Products", "sum"),
         ).reset_index().round(1).sort_values("avg_v3", ascending=False)
-        st.dataframe(company_stats, use_container_width=True, hide_index=True)
+        st.dataframe(company_stats, width='stretch', hide_index=True)
 
 # ── Tab 3: Score distribution ─────────────────────────────────────────────────
 
