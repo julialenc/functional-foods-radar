@@ -1,17 +1,3 @@
-CREATE INDEX idx_nlp_category ON nlp_results(health_wash_category);
-
-CREATE INDEX idx_nlp_score ON nlp_results(health_wash_score);
-
-CREATE INDEX idx_products_brand ON products(brands);
-
-CREATE INDEX idx_products_category ON products(query_category);
-
-CREATE INDEX idx_products_country ON products(primary_country);
-
-CREATE INDEX idx_products_modified ON products(last_modified_t);
-
-CREATE INDEX idx_products_nova ON products(nova_group);
-
 CREATE TABLE ingestion_log (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     run_timestamp     TEXT,
@@ -40,11 +26,29 @@ CREATE TABLE nlp_results (
     functional_claims_found    TEXT,
     negative_claim_count       INTEGER,
     negative_claims_found      TEXT,
-    health_wash_score          REAL,
-    health_wash_category       TEXT,
+    health_wash_score_v1       REAL,
+    health_wash_category_v1    TEXT,
     cluster_label              TEXT,      -- null in v1, populated in v2
     analyzed_at                TEXT,      -- when this row was analyzed
+    health_wash_score_v3       REAL,      -- populated by merge_scores.py
+    health_wash_category_v3    TEXT,
+    v3_claims_found            TEXT,
+    ht_sugar_loophole          INTEGER,   -- 1/0 half-truth pattern flags
+    ht_protein_masks_fat       INTEGER,
+    ht_fibre_distraction       INTEGER,
+    ht_vegan_calorie_trap      INTEGER,
+    v3_immune_claim            INTEGER,
+    v3_gender_targeting_claim  INTEGER,
+    v3_vegan_claim             INTEGER,
+    v3_organic_claim           INTEGER,
+    v3_dairy_free_claim        INTEGER,
+    v3_plant_based_claim       INTEGER,
+    v3_heritage_claim          INTEGER,
+    v3_gluten_free_claim       INTEGER,
+    v3_minimal_ingredients_claim INTEGER,
+    v3_no_palm_oil_claim       INTEGER,
     FOREIGN KEY (barcode) REFERENCES products(barcode)
+    
 );
 
 CREATE TABLE products (
@@ -76,7 +80,8 @@ CREATE TABLE products (
     nlp_eligible           INTEGER,   -- 1/0 boolean
     created_t              TEXT,
     last_modified_t        TEXT,
-    ingested_at            TEXT       -- when this row was loaded by us
+    ingested_at            TEXT,      -- when this row was loaded by us
+    image_url              TEXT       -- front-of-pack image URL for v3 vision
 );
 
 CREATE TABLE sqlite_sequence(name,seq);
@@ -87,7 +92,7 @@ CREATE TABLE weekly_brand_summary (
     brands                     TEXT,
     query_category             TEXT,
     product_count              INTEGER,
-    avg_health_wash_score      REAL,
+    avg_health_wash_score_v1   REAL,
     high_score_count           INTEGER,   -- score >= 70
     medium_score_count         INTEGER,   -- score 45-69
     pct_nova4                  REAL,
