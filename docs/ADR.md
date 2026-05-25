@@ -431,6 +431,76 @@ information sources requiring different detection methods.
 
 \---
 
+---
+
+### ADR-011 — Three brand typology for claim analysis
+**Date:** 25 May 2026
+**Status:** Active — informs sampling and reporting strategy
+
+**Decision:** Analytical findings are reported at brand level, not
+company level. The company_brand_mapping.csv enables company-level
+drill-down in Power BI but all scoring, clustering, and half-truth
+detection runs at primary_brand level.
+
+**Rationale:**
+Brand-by-brand analysis revealed three distinct typologies:
+
+TYPE 1 — Dedicated functional brands
+  Entire portfolio built around functional claims.
+  Examples: Chiefs, Fiber One, Atkins, Muscle Milk, Met-Rx.
+  High v3 scores expected and analytically correct.
+  Less interesting for health-washing story — claims match product intent.
+
+TYPE 2 — Mainstream brands with dedicated functional lines
+  Core portfolio has no claims; functional sub-line added to compete.
+  Examples: Snickers Protein, Emmi Energy Milk, Emmi PUR,
+            Mars Bar Protein, Special K Protein.
+  Most interesting for half-truth analysis — mainstream credibility
+  applied to functional claims on products not designed for them.
+
+TYPE 3 — Mainstream brands with portfolio-wide functional positioning
+  Claims appear across the entire portfolio as brand identity.
+  Examples: Kellogg's (fortification), Alpro/Oatly (plant-based),
+            Danone sub-brand architecture (immune/probiotic/protein).
+  Most systematic — claim architecture is deliberate and coordinated.
+
+**Two analytical dimensions:**
+
+DIMENSION 1 — Communication strategy (HOW brands make claims):
+1. Regulatory language: EU-approved wording, letter not spirit
+   (Actimel: vitamins B6+D contribute to normal immune function)
+2. Numeric precision: hard numbers implying scientific rigour
+   (Kellogg's: 12g protein, HIGH FIBRE, VITAMINS B6 B12 D)
+3. Transparency positioning: clean label as anti-health-washing
+   (Kind: ingredients you can see and pronounce)
+4. Proprietary concepts: branded bundles bypassing claim scrutiny
+   (Nestlé: OPTI-START, OPTI-GROW, OPTI-DÉJ)
+
+DIMENSION 2 — Benefit territory (WHAT is claimed):
+- Protein: largest trend; numeric + comparative claims dominant
+- Sugar reduction: no added sugar + comparative % reduction
+- Gut health: probiotic + fibre combined benefit group
+- Fortification: vitamins & minerals; often via proprietary concepts
+- Natural / clean label: transparency + origin + no artificial
+- Plant-based: positioning signal, not health benefit per WTP research
+- Immune support: regulatory language territory (Actimel, Activia)
+- Energy / performance: duration claims (BelVita 4h, Nature Valley)
+- Free-from: gluten-free, lactose-free, dairy-free
+
+The intersection of both dimensions is the analytical core:
+Protein × Numeric = Special K "12g PROTEIN MEAL BARS"
+Immune × Regulatory = Actimel "vitamins B6+D, normal immune function"
+Natural × Transparency = Kind "ingredients you can see and pronounce"
+Fortification × Proprietary = Nestlé "OPTI-GROW"
+
+**Implications for analysis:**
+- Filter top brand rankings to n >= 20 products to surface Type 3 brands
+- Type 1 brands dominate raw score rankings but are less publishable
+- Type 2 brands are the most compelling case studies
+- Vegan claim treated as positioning signal not health benefit
+  (no WTP premium vs organic/natural per practitioner input)
+
+**References:** OBS-022 through OBS-026, DATA_OBSERVATIONS.md
 
 
 \## Modular contract between pipeline layers
