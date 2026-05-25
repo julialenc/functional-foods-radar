@@ -53,6 +53,13 @@ SAMPLE_DIR = os.path.join(ROOT, "data", "sample")
 # These are sampled regardless of score.
 # Based on practitioner input: known health-washing suspects.
 
+# ── Brands to exclude from sampling ──────────────────────────────────────────
+# Brands that appear in OFF due to category misclassification
+EXCLUDE_BRANDS = [
+    'sapporo ichiban',  # instant noodles miscategorised as beverage
+    'sapporo',          # beer brand
+]
+
 TIER1_BRANDS = [
     # Swiss / European premium — half-truth heartland
     "emmi", "chiefs",
@@ -120,6 +127,7 @@ def load_products_with_scores(conn):
           AND p.image_url NOT LIKE '%/invalid/%'
           AND p.image_url != ''
     """, conn)
+    df = df[~df['primary_brand'].isin(EXCLUDE_BRANDS)]
     return df
 
 
