@@ -236,3 +236,11 @@ database/*.db
 
 # Secrets — never commit
 .env
+
+# Large output files — too big for GitHub
+data/reference/merged_results_*.csv
+data/reference/powerbi_merged_*.csv
+data/sample/merged_results_*.csv
+data/sample/powerbi_merged_*.csv
+data/sample/bulk_analyzed_*.csv
+data/sample/bulk_clean_*.csv
