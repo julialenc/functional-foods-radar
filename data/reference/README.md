@@ -41,3 +41,21 @@ Cost: ~7.74 CHF (Azure Vision S1 + Azure OpenAI).
 3. Generate smart sample: `python pipeline\smart_sample.py`
 4. Run vision extraction: `python pipeline\vision_extract.py`
 
+### vision_results_20260524_211040.csv
+Second Azure Vision run with improved prompt (new claim types: immune,
+vegan, organic, gender targeting, minimal ingredients, heritage).
+4,842 products. 1,673 with claims detected.
+Cost: ~7.74 CHF.
+
+### merged_results_20260525_134839.csv
+v3 scores merged from second vision run. 4,714 products with v3 score.
+36 HIGH, 486 MEDIUM, 2,132 LOW, 2,060 CLEAN.
+Mean uplift v1→v3: 8.3 points.
+
+### company_brand_mapping.csv
+276 in-scope brands mapped to parent companies.
+Source: global_cpg_manufacturers_brands_2026.csv (May 25 2026).
+Includes Mars/Kellanova post-acquisition (Dec 2025).
+Used for Power BI drill-through by company only.
+Analytics run at brand level.
+
