@@ -110,6 +110,16 @@ CREATE TABLE IF NOT EXISTS nlp_results (
     ht_protein_masks_fat       INTEGER,
     ht_fibre_distraction       INTEGER,
     ht_vegan_calorie_trap      INTEGER,
+    v3_immune_claim            INTEGER,
+    v3_gender_targeting_claim  INTEGER,
+    v3_vegan_claim             INTEGER,
+    v3_organic_claim           INTEGER,
+    v3_dairy_free_claim        INTEGER,
+    v3_plant_based_claim       INTEGER,
+    v3_heritage_claim          INTEGER,
+    v3_gluten_free_claim       INTEGER,
+    v3_minimal_ingredients_claim INTEGER,
+    v3_no_palm_oil_claim       INTEGER,
     FOREIGN KEY (barcode) REFERENCES products(barcode)
     
 );
@@ -277,6 +287,10 @@ NLP_COLS = [
     "health_wash_score_v3", "health_wash_category_v3", "v3_claims_found",
     "ht_sugar_loophole", "ht_protein_masks_fat",
     "ht_fibre_distraction", "ht_vegan_calorie_trap",
+    "v3_immune_claim", "v3_gender_targeting_claim",
+    "v3_vegan_claim", "v3_organic_claim", "v3_dairy_free_claim",
+    "v3_plant_based_claim", "v3_heritage_claim", "v3_gluten_free_claim",
+    "v3_minimal_ingredients_claim", "v3_no_palm_oil_claim",
 ]
 
 def load_nlp_results(df, conn, timestamp):

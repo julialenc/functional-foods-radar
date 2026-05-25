@@ -85,18 +85,14 @@ HALF_TRUTH_BONUS = {
 
 
 def find_latest_vision_results():
-    """Find the most recent vision results CSV."""
-    # Check reference folder first
-    ref_files = sorted(REF_DIR.glob("vision_results_*.csv"), reverse=True)
-    if ref_files:
-        return ref_files[0]
-    # Fall back to sample folder
-    sample_files = sorted(SAMPLE_DIR.glob("vision_results_*.csv"), reverse=True)
-    if sample_files:
-        return sample_files[0]
-    raise FileNotFoundError(
-        "No vision_results_*.csv found. Run vision_extract.py first."
-    )
+    """Find the most recent vision results CSV across reference and sample folders."""
+    files = list(REF_DIR.glob("vision_results_*.csv")) + \
+            list(SAMPLE_DIR.glob("vision_results_*.csv"))
+    if not files:
+        raise FileNotFoundError(
+            "No vision_results_*.csv found. Run vision_extract.py first."
+        )
+    return max(files, key=lambda f: f.stat().st_mtime)
 
 
 def compute_component_b(row):
