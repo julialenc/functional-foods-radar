@@ -1320,7 +1320,147 @@ US multinationals. EFSA is stricter on unsubstantiated claims, which
 
 constrains European brands more.
 
-\- Gerblé
+\- Gerblé vs Belvita (same category): Gerblé uses VITALITÉ + SANS HUILE
+
+&#x20; DE PALME + comparative sugar reduction. Belvita uses "4 hours of steady
+
+&#x20; energy" — comparative vs what? Never stated.
+
+\- HT-3 fibre distraction confirmed for both brands: wholegrain claims
+
+&#x20; on NOVA 4 products with D/E Nutriscore
 
 
+
+\---
+
+
+
+\### OBS-024 — Actimel/Danone: immune claim and sub-brand portfolio architecture
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* Actimel uses EU Regulation 432/2012 approved language
+
+("vitamines B6 \& D contribuent au fonctionnement normal du système
+
+immunitaire") — technically correct but creates immune halo far beyond
+
+what the claim states. The immune\_claim itself has no dedicated field
+
+in our pipeline — partially captured via fortification + probiotic.
+
+Danone coordinates five distinct claim territories across sub-brands:
+
+Actimel (immune), Activia (gut), HiPRO/YoPRO (protein), Taillefine
+
+(low fat), Danonino (kids/no added sugar). This is portfolio-level
+
+claim architecture across the entire dairy category.
+
+
+
+\---
+
+
+
+\### OBS-025 — Four health-washing strategies identified
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* Brand-by-brand analysis reveals four distinct strategies:
+
+1\. Regulatory claims (Actimel): approved EU language, letter not spirit
+
+2\. Numeric claims (Kellogg's): Xg protein, Xg fibre, hard numbers
+
+3\. Transparency claims (Kind): "ingredients you can see \& pronounce" —
+
+&#x20;  positions health-washing as the OPPOSITE of health-washing
+
+4\. Proprietary concepts (Nestlé): OPTI-START, OPTI-GROW, OPTI-DÉJ,
+
+&#x20;  ACTIVGO bundle vitamins into branded marks that imply complete
+
+&#x20;  nutritional optimization while meaning nothing legally
+
+\*\*Emmi note:\*\* Two-tier strategy — traditional yogurts with no claims
+
+vs Energy Milk/protein line with US-style blunt claims. PUR line uses
+
+minimal ingredients claim ("only 3 ingredients") — sugar is ingredient 3.
+
+
+
+\---
+
+
+
+\### OBS-026 — "U" private label: HT-1 sugar loophole disclosed on pack
+
+\*\*Date:\*\* 24 May 2026
+
+\*\*Finding:\*\* Intermarché "U" private label fruit purées carry "SANS
+
+SUCRES AJOUTÉS" on front while printing the mandatory disclaimer
+
+"contient les sucres naturellement présents dans les fruits" on the
+
+same pack. HT-1 sugar loophole made fully explicit by regulation.
+
+14/22 sampled products make this claim — correctly captured by pipeline.
+
+\*\*Private label implication:\*\* U, Carrefour, Lidl Vemondo systematically
+
+adopt branded product claim language at lower price points. Health-washing
+
+claims are becoming table-stakes across the entire category, not a
+
+premium brand strategy.
+
+
+
+\---
+
+
+
+\### OBS-027 — Warning thresholds based on EU Regulation 1169/2011
+
+\*\*Date:\*\* 26 May 2026
+
+\*\*Decision:\*\* Product warnings use EU Regulation 1169/2011 HIGH thresholds
+
+for fat, saturated fat, sugar, and salt — not category-relative benchmarks.
+
+Rationale: category averages normalize within unhealthy categories.
+
+EU thresholds are legally defined, defensible, and consumer-recognizable
+
+(used in UK/EU traffic light labelling).
+
+Thresholds to verify against current EFSA documentation:
+
+&#x20; Solid foods: sugar >22.5g, sat fat >5g, fat >17.5g, salt >1.25g per 100g
+
+&#x20; Liquids: sugar >11.25g, sat fat >3g, fat >7.5g, salt >0.625g per 100ml
+
+Separate liquid/solid detection needed: use energy\_kcal density as proxy
+
+(liquids typically <100 kcal/100ml, solids >200 kcal/100ml).
+
+\*\*Status:\*\* Thresholds pending verification against official EFSA source.
+
+
+
+\*\*Multi-market threshold decision:\*\*
+
+EU Regulation 1169/2011 thresholds applied universally (per 100g).
+
+UK Food Information Regulations 2014 uses identical thresholds.
+
+US FDA 21 CFR Part 101 uses per-serving DV% — not compatible with
+
+our per-100g data structure. EU thresholds applied to US products
+
+for consistency; noted as a methodology limitation in published findings.
 
